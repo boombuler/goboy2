@@ -73,7 +73,7 @@ func (m *mmuImpl) Read(addr uint16) byte {
 	// [FF80-FFFE] Zero-page RAM
 	if addr >= 0xFF80 && addr < 0xFFFF {
 		return m.zpram[addr-0xFF80]
-	} else if m.dma.blockMemoryAccess() {
+	} else if m.dma.blockMemoryAccess(addr) {
 		return 0xFF
 	}
 
@@ -118,7 +118,7 @@ func (m *mmuImpl) Write(addr uint16, value byte) {
 	if addr >= 0xFF80 && addr < 0xFFFF {
 		m.zpram[addr-0xFF80] = value
 		return
-	} else if m.dma.blockMemoryAccess() {
+	} else if m.dma.blockMemoryAccess(addr) {
 		if addr == AddrDMATransfer {
 			m.dma.Write(addr, value)
 		}

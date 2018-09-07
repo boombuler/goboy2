@@ -45,7 +45,37 @@ func (c *dmaTransfer) step() {
 	c.ticking = false
 }
 
-func (c *dmaTransfer) blockMemoryAccess() bool {
-	return !c.ticking && // get memory access while copy operation
-		c.block
+type memBus byte
+
+const (
+	busCPU memBus = iota
+	busMain
+	busVRam
+	busRam
+)
+
+var memBusMap = [8]memBus{
+	busMain, // 0x0000
+	busMain, // 0x2000
+	busMain, // 0x4000
+	busMain, // 0x6000
+	busVRam, // 0x8000
+	busMain, // 0xA000
+	busMain, // 0xC000
+	busCPU,  // 0xE000
+}
+
+func busFromAdr(addr uint16) memBus {
+	return memBusMap[int(addr>>13)]
+}
+
+func (c *dmaTransfer) blockMemoryAccess(addr uint16) bool {
+	if !c.ticking && c.block {
+		// Always block oam
+		if addr >= 0xFE00 && addr <= 0xFE9F {
+			return true
+		}
+		return busFromAdr(c.addr) == busFromAdr(addr)
+	}
+	return false
 }
