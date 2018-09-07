@@ -9,6 +9,7 @@ type MMU interface {
 	SetGraphicRam(vram, oram IODevice)
 	LoadCartridge(cartridge IODevice)
 	AddIODevice(d IODevice, addrs ...uint16)
+	Step()
 }
 
 type mmuImpl struct {
@@ -17,6 +18,7 @@ type mmuImpl struct {
 	vram, oam IODevice
 	ram       [2 * 4096]byte
 	zpram     [127]byte
+	dma       *dmaTransfer
 }
 
 type IODevice interface {
@@ -41,10 +43,15 @@ func New() MMU {
 	res := &mmuImpl{
 		ioDevices: make([]IODevice, 256),
 	}
+	res.dma = &dmaTransfer{mmu: res}
 	res.AddIODevice(new(irqHandler), AddrIRQFlags, AddrIRQEnabled)
 	res.AddIODevice(new(bootMode), AddrBootmodeFlag)
-	res.AddIODevice(&dmaTransfer{res}, AddrDMATransfer)
+	res.AddIODevice(res.dma, AddrDMATransfer)
 	return res
+}
+
+func (m *mmuImpl) Step() {
+	m.dma.step()
 }
 
 func (m *mmuImpl) AddIODevice(d IODevice, addrs ...uint16) {
@@ -63,6 +70,13 @@ func (m *mmuImpl) SetGraphicRam(vram, oam IODevice) {
 }
 
 func (m *mmuImpl) Read(addr uint16) byte {
+	// [FF80-FFFE] Zero-page RAM
+	if addr >= 0xFF80 && addr < 0xFFFF {
+		return m.zpram[addr-0xFF80]
+	} else if m.dma.blockMemoryAccess() {
+		return 0xFF
+	}
+
 	switch {
 	// [0000-3FFF] Cartridge ROM, bank 0
 	case addr >= 0x0000 && addr <= 0x3FFF:
@@ -94,15 +108,23 @@ func (m *mmuImpl) Read(addr uint16) byte {
 			return d.Read(addr)
 		}
 		return 0x00
-	// [FF80-FFFF] Zero-page RAM
-	case addr >= 0xFF80:
-		return m.zpram[addr-0xFF80]
 	default:
 		return 0x00
 	}
 }
 
 func (m *mmuImpl) Write(addr uint16, value byte) {
+	// [FF80-FFFE] Zero-page RAM
+	if addr >= 0xFF80 && addr < 0xFFFF {
+		m.zpram[addr-0xFF80] = value
+		return
+	} else if m.dma.blockMemoryAccess() {
+		if addr == AddrDMATransfer {
+			m.dma.Write(addr, value)
+		}
+		return
+	}
+
 	switch {
 	// [0000-7FFF] Cartridge ROM
 	case addr >= 0x0000 && addr <= 0x7FFF:
@@ -127,9 +149,6 @@ func (m *mmuImpl) Write(addr uint16, value byte) {
 		if d := m.ioDevices[addr&0xFF]; d != nil {
 			d.Write(addr, value)
 		}
-	// [FF80-FFFF] Zero-page RAM
-	case addr >= 0xFF80:
-		m.zpram[addr-0xFF80] = value
 	}
 }
 

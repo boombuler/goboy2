@@ -38,6 +38,7 @@ func (gb *GameBoy) StepFrame() *image.RGBA {
 	for {
 		gb.timer.Prepare()
 		gb.CPU.Step()
+		gb.MMU.Step()
 		gb.timer.Step()
 
 		if img := gb.gpu.Step(4); img != nil {
