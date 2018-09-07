@@ -1,13 +1,10 @@
 package gpu
 
 type spriteData struct {
-	Y        int
-	X        int
-	TileId   int
-	Priority bool
-	FlipV    bool
-	FlipH    bool
-	Palette  int
+	Y      int
+	X      int
+	TileId int
+	flags  byte
 }
 type vRAM []byte
 type oam []*spriteData
@@ -43,24 +40,12 @@ func (sr oam) Read(addr uint16) byte {
 	case 2:
 		return byte(sr[no].TileId)
 	case 3:
-		val := byte(0)
-		if sr[no].Priority {
-			val |= 0x80
-		}
-		if sr[no].FlipV {
-			val |= 0x40
-		}
-		if sr[no].FlipH {
-			val |= 0x20
-		}
-		val |= byte(sr[no].Palette << 4)
-		return val
+		return sr[no].flags
 	}
 	return 0x00
 }
 
 func (sr oam) Write(addr uint16, val byte) {
-
 	addr = (addr - 0xFE00) % 0x00A0
 	no := addr >> 2
 	switch addr & 0x03 {
@@ -71,9 +56,19 @@ func (sr oam) Write(addr uint16, val byte) {
 	case 2:
 		sr[no].TileId = int(val)
 	case 3:
-		sr[no].Priority = (val & 0x80) != 0x80
-		sr[no].FlipV = (val & 0x40) == 0x40
-		sr[no].FlipH = (val & 0x20) == 0x20
-		sr[no].Palette = int((val & 0x10) >> 4)
+		sr[no].flags = val
 	}
+}
+
+func (sp *spriteData) Palette() int {
+	return int((sp.flags & 0x10) >> 4)
+}
+func (sp *spriteData) FlipH() bool {
+	return (sp.flags & 0x20) != 0
+}
+func (sp *spriteData) FlipV() bool {
+	return (sp.flags & 0x40) != 0
+}
+func (sp *spriteData) Priority() bool {
+	return (sp.flags & 0x80) != 0
 }

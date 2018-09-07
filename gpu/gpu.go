@@ -295,10 +295,10 @@ func (g *GPU) RenderSpritesOnScanline() {
 				tile = sprite.TileId & 0xFE
 				if sy >= 8 {
 					sy -= 8
-					if !sprite.FlipV {
+					if !sprite.FlipV() {
 						tile++
 					}
-				} else if sprite.FlipV {
+				} else if sprite.FlipV() {
 					tile++
 				}
 			}
@@ -369,12 +369,12 @@ func (g *GPU) noBGAt(x, y int) bool {
 func (g *GPU) drawSpriteTileLine(sa *spriteData, tileId, tileY int) {
 	y := sa.Y + tileY
 	if y < DISPLAY_HEIGHT && y >= 0 {
-		for tileX, color := range g.getTileLine(tileId, tileY, sa.FlipH, sa.FlipV) {
+		for tileX, color := range g.getTileLine(tileId, tileY, sa.FlipH(), sa.FlipV()) {
 			if color != 0 {
 				x := sa.X + tileX
 				if x < DISPLAY_WIDTH && x >= 0 {
-					if sa.Priority || g.noBGAt(x, y) {
-						g.screen.Set(x, y, g.objectPalettes[sa.Palette][color])
+					if sa.Priority() || g.noBGAt(x, y) {
+						g.screen.Set(x, y, g.objectPalettes[sa.Palette()][color])
 					}
 				}
 			}
