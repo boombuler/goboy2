@@ -6,7 +6,6 @@ type dmaTransfer struct {
 
 	addr    uint16
 	ticking bool
-	lastVal byte
 	block   bool
 }
 
@@ -16,7 +15,7 @@ const (
 )
 
 func (c *dmaTransfer) Read(addr uint16) byte {
-	return c.lastVal
+	return byte(c.addr >> 8)
 }
 
 func (c *dmaTransfer) Write(addr uint16, value byte) {
@@ -38,10 +37,12 @@ func (c *dmaTransfer) step() {
 	if c.steps >= 160 {
 		return // warmup
 	}
-	i := 0x009F - c.steps
+	i := 159 - c.steps
+	srcAdr := c.addr + i
+	destAdr := addrOAMStart + i
+
 	c.ticking = true
-	c.lastVal = c.mmu.Read(c.addr + i)
-	c.mmu.Write(addrOAMStart+i, c.lastVal)
+	c.mmu.Write(destAdr, c.mmu.Read(srcAdr))
 	c.ticking = false
 }
 
@@ -51,7 +52,6 @@ const (
 	busCPU memBus = iota
 	busMain
 	busVRam
-	busRam
 )
 
 var memBusMap = [8]memBus{
