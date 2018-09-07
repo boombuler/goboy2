@@ -1,0 +1,138 @@
+package cartridge
+
+import (
+	"fmt"
+	"io"
+	"io/ioutil"
+	"strings"
+)
+
+type MBC interface {
+	Read(addr uint16) byte
+	Write(addr uint16, value byte)
+	DumpRAM(w io.Writer)
+	LoadRAM(r io.Reader)
+}
+
+type Cartridge struct {
+	MBC
+	Title    string
+	GBC      bool
+	ROMSize  uint
+	RAMSize  uint
+	Japanese bool
+	Version  byte
+}
+
+var mbcFactories = map[byte]func(c *Cartridge, data []byte) (MBC, error){
+	0x00: func(c *Cartridge, data []byte) (MBC, error) {
+		// ROM Only
+		return createMBC0(c, data, false, false)
+	},
+	0x01: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC1
+		return createMBC1(c, data, false)
+	},
+	0x02: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC1+RAM
+		return createMBC1(c, data, false)
+	},
+	0x03: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC1+RAM+BAT
+		return createMBC1(c, data, true)
+	},
+	0x05: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC2
+		return createMBC2(c, data, false)
+	},
+	0x06: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC2+BAT
+		return createMBC2(c, data, true)
+	},
+	0x08: func(c *Cartridge, data []byte) (MBC, error) {
+		// ROM+RAM
+		return createMBC0(c, data, true, false)
+	},
+	0x09: func(c *Cartridge, data []byte) (MBC, error) {
+		// ROM+RAM+BAT
+		return createMBC0(c, data, true, true)
+	},
+	// 0x0B MMM01
+	// 0x0C MMM01+RAM
+	// 0x0D MMM01+RAM+BAT
+	0x0F: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC3+Timer+BAT
+		return createMBC3(c, data, true, true)
+	},
+	0x10: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC3+Timer+RAM+BAT
+		return createMBC3(c, data, true, true)
+	},
+	0x11: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC3
+		return createMBC3(c, data, false, false)
+	},
+	0x12: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC3+RAM
+		return createMBC3(c, data, false, false)
+	},
+	0x13: func(c *Cartridge, data []byte) (MBC, error) {
+		// MBC3+RAM+BAT
+		return createMBC3(c, data, false, true)
+	},
+	// 0x15 MBC4
+	// 0x16 MBC4+RAM
+	// 0x17 MBC4+RAM+BAT
+	// 0x19 MBC5
+	// 0x1A MBC5+RAM
+	// 0x1B MBC5+RAM+BAT
+	// 0x1C MBC5+RUMBLE
+	// 0x1D MBC5+RUMBLE+RAM
+	// 0x1E MBC5+RUMBLE+RAM+BAT
+	// 0xFC POCKET CAMERA
+	// 0xFD BANDAI TAMA5
+	// 0xFE HuC3
+	// 0xFF HuC1+RAM+BAT
+}
+
+func Load(reader io.Reader) (*Cartridge, error) {
+	rom, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	if len(rom) < 0x8000 {
+		return nil, fmt.Errorf("Invalid ROM")
+	}
+	c := new(Cartridge)
+	c.Title = strings.TrimRight(string(rom[0x0134:0x0142]), "\x00")
+	c.GBC = (rom[0x0143] == 0x80) || (rom[0x0143] == 0xC0)
+
+	c.ROMSize = 0x8000 << rom[0x0148]
+
+	switch rom[0x0149] {
+	case 0x00:
+		c.RAMSize = 0x000000
+	case 0x01:
+		c.RAMSize = 0x000800
+	case 0x02:
+		c.RAMSize = 0x002000
+	case 0x03:
+		c.RAMSize = 0x008000
+	case 0x04:
+		c.RAMSize = 0x020000
+	default:
+		return nil, fmt.Errorf("Unsupported RAM size: %v", rom[0x0149])
+	}
+	c.Japanese = (rom[0x014A] == 0x00)
+	c.Version = rom[0x014C]
+	mbcFactory, ok := mbcFactories[rom[0x0147]]
+	if !ok {
+		return nil, fmt.Errorf("MBC type not supported: %v", rom[0x0147])
+	} else {
+		c.MBC, err = mbcFactory(c, rom)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c, nil
+}
