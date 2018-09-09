@@ -86,12 +86,15 @@ func main() {
 		if *noboot {
 			gb.SetupNoBootRom()
 		}
-
+		if err := gb.APU.Start(); err != nil {
+			panic(err)
+		}
 		gb.CPU.Dump = *dump
 		for {
 			img := gb.StepFrame()
 			select {
 			case _, _ = <-exitChan:
+				gb.APU.Stop()
 			default:
 				s.Show(img)
 			}

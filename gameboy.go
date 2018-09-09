@@ -1,6 +1,7 @@
 package main
 
 import (
+	"goboy2/apu"
 	"goboy2/cartridge"
 	"goboy2/cpu"
 	"goboy2/gpu"
@@ -15,6 +16,7 @@ type GameBoy struct {
 	MMU   mmu.MMU
 	CPU   *cpu.CPU
 	gpu   *gpu.GPU
+	APU   *apu.APU
 	timer *timer.Timer
 	kb    *input.Keyboard
 }
@@ -22,6 +24,7 @@ type GameBoy struct {
 func NewGameBoy(c *cartridge.Cartridge) *GameBoy {
 	gb := new(GameBoy)
 	gb.MMU = mmu.New()
+	gb.APU = apu.New()
 	gb.CPU = cpu.New(gb.MMU)
 	gb.gpu = gpu.New(gb.MMU)
 	gb.timer = timer.New(gb.MMU)
