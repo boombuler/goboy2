@@ -3,7 +3,6 @@ package apu
 import "time"
 
 const (
-	stepDuration  = (time.Second / 4194304) * 4
 	sweepInterval = time.Second / 128
 )
 
