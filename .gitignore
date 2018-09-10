@@ -1,5 +1,5 @@
 .vscode
-.gb
-.exe
-.dll
+*.gb
+*.exe
+*.dll
 goboy2
