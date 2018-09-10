@@ -21,6 +21,9 @@ const (
 	sampleBufferSize               = 2048
 	sampleDuration   time.Duration = time.Second / sampleRate
 	stepDuration     time.Duration = time.Second / gbTicksPerSecond
+
+	frameduration   = stepDuration * 17556
+	samplesPerFrame = frameduration / sampleDuration
 )
 
 type APU struct {
@@ -37,9 +40,9 @@ type APU struct {
 func New(mmu mmu.MMU) *APU {
 	apu := &APU{
 		volume:      0,
-		soundBuffer: make([]float32, sampleBufferSize, sampleBufferSize),
+		soundBuffer: make([]float32, sampleBufferSize*2, sampleBufferSize*2),
 	}
-	ch2 := &soundChannel2{apu: apu}
+	ch2 := newSC2(apu)
 	apu.generators = []SoundChannel{
 		ch2,
 	}
