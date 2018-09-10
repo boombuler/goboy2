@@ -24,7 +24,7 @@ type GameBoy struct {
 func NewGameBoy(c *cartridge.Cartridge) *GameBoy {
 	gb := new(GameBoy)
 	gb.MMU = mmu.New()
-	gb.APU = apu.New()
+	gb.APU = apu.New(gb.MMU)
 	gb.CPU = cpu.New(gb.MMU)
 	gb.gpu = gpu.New(gb.MMU)
 	gb.timer = timer.New(gb.MMU)
@@ -43,6 +43,7 @@ func (gb *GameBoy) StepFrame() *image.RGBA {
 		gb.CPU.Step()
 		gb.MMU.Step()
 		gb.timer.Step()
+		gb.APU.Step()
 
 		if img := gb.gpu.Step(4); img != nil {
 			sleepTime := frameduration - time.Now().Sub(starttime)

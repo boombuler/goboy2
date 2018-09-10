@@ -7,6 +7,7 @@ import "C"
 
 import (
 	"fmt"
+	"goboy2/mmu"
 	"reflect"
 	"unsafe"
 
@@ -26,16 +27,22 @@ type APU struct {
 	format     sdl.AudioFormat
 }
 
-func New() *APU {
-	return &APU{
+func New(mmu mmu.MMU) *APU {
+	apu := &APU{
 		volume:      0,
 		soundBuffer: make([]int16, samplerate, samplerate),
-		generators:  []SoundChannel{&testGen{}},
 	}
+	ch2 := &soundChannel2{apu: apu}
+	apu.generators = []SoundChannel{
+		ch2,
+	}
+	mmu.AddIODevice(ch2, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
+	return apu
 }
 
 type SoundChannel interface {
 	GenerateSamples(buffer []int16) bool
+	Step()
 }
 
 var (
@@ -71,6 +78,12 @@ func sdlAudioCallback(a unsafe.Pointer, stream unsafe.Pointer, l C.int) {
 			src := (*uint8)(unsafe.Pointer(&sampleBuffer[0]))
 			sdl.MixAudioFormat((*uint8)(stream), src, apu.format, uint32(l), sdl.MIX_MAXVOLUME)
 		}
+	}
+}
+
+func (apu *APU) Step() {
+	for _, sc := range apu.generators {
+		sc.Step()
 	}
 }
 
