@@ -10,7 +10,7 @@ type squareWaveGen struct {
 
 	addr1, addr2, addr3, addr4 uint16
 
-	sample float32
+	hi bool
 
 	reg1 byte
 	reg2 byte
@@ -31,22 +31,26 @@ func newSquareWave(apu *APU, addr1, addr2, addr3, addr4 uint16) *squareWaveGen {
 	return channel
 }
 
-func (s *squareWaveGen) Step() {
-	s.ve.Step()
-	s.timerCnt -= 4 // not sure if 4 or 1...
+func (s *squareWaveGen) Step(frameStep byte) {
+	if frameStep == 7 {
+		s.ve.Step()
+	}
+	useLen := s.useSoundLength()
+	if frameStep%2 == 0 && useLen {
+		s.length--
+	}
+
+	s.timerCnt--
+
 	if s.timerCnt <= 0 {
-		s.timerCnt = s.freq()
+		s.timerCnt = 2048 - s.freq()
 		s.dutyIdx = (s.dutyIdx + 1) % 8
 
-		if useLen := !s.useSoundLength(); useLen || s.length > 0 {
+		if !useLen || s.length > 0 {
 			if s.duty()&byte(1<<s.dutyIdx) == 0 {
-				s.sample = 0
+				s.hi = false
 			} else {
-				s.sample = s.Volume * (float32(s.ve.Volume) / 15.0)
-			}
-
-			if useLen {
-				s.length--
+				s.hi = true
 			}
 		}
 	}
@@ -54,7 +58,10 @@ func (s *squareWaveGen) Step() {
 }
 
 func (s *squareWaveGen) CurrentSample() float32 {
-	return s.sample
+	if s.hi {
+		return s.Volume * (float32(s.ve.Volume) / 15.0)
+	}
+	return 0
 }
 
 func (s *squareWaveGen) getVolEnvelopCtrl() byte {
@@ -101,7 +108,12 @@ func (s *squareWaveGen) setLength() {
 func (s *squareWaveGen) freq() int {
 	v := int(s.reg4 & 7)
 	v = v<<7 | int(s.reg3)
-	return gbTicksPerSecond / (2048 - v)
+	return v
+}
+
+func (s *squareWaveGen) setFreq(f int) {
+	s.reg3 = byte(f)
+	s.reg4 = (s.reg4 & 0xF8) | byte(0x07&(f>>8))
 }
 
 func (s *squareWaveGen) Write(addr uint16, val byte) {

@@ -24,13 +24,15 @@ const (
 )
 
 const (
-	gbTicksPerSecond                 = 4194304 / 4
-	sampleRate                       = 2 * 22050
-	sampleBufferLength               = 4 * 1024
-	channelCount                     = 2
-	sampleDuration     time.Duration = time.Second / sampleRate
-	stepDuration       time.Duration = time.Second / gbTicksPerSecond
-	sampleSize                       = 4 // sizeOf(float32)
+	gbFreq                            = 4194304
+	gbTicksPerSecond                  = gbFreq / 4
+	frameSequencerTicks               = gbTicksPerSecond / 512
+	sampleRate                        = 2 * 22050
+	sampleBufferLength                = 4 * 1024
+	channelCount                      = 2
+	sampleDuration      time.Duration = time.Second / sampleRate
+	stepDuration        time.Duration = time.Second / gbTicksPerSecond
+	sampleSize                        = 4 // sizeOf(float32)
 
 	AddrNR21 uint16 = 0xFF16
 	AddrNR22 uint16 = 0xFF17
@@ -47,7 +49,12 @@ type APU struct {
 	soundBuffer  []float32
 	m            *sync.Mutex
 
-	sampleT time.Duration
+	frameSeq     int
+	frameSeqStep byte
+	sampleT      time.Duration
+	sampleCnt    int
+	sampleLeft   float32
+	sampleRight  float32
 
 	volumeSelect  byte
 	channelSelect byte
@@ -62,6 +69,7 @@ func New(mmu mmu.MMU) *APU {
 		masterVolume: 0.3,
 		m:            new(sync.Mutex),
 		soundBuffer:  make([]float32, 0),
+		frameSeq:     frameSequencerTicks,
 	}
 	ch1 := newSC1(apu)
 	ch2 := newSquareWave(apu, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
@@ -71,14 +79,14 @@ func New(mmu mmu.MMU) *APU {
 		ch2,
 	}
 	mmu.AddIODevice(apu, AddrNR50, AddrNR51, AddrNR52)
-	mmu.AddIODevice(ch1, AddrNR11, AddrNR12, AddrNR13, AddrNR14)
+	mmu.AddIODevice(ch1, AddrNR10, AddrNR11, AddrNR12, AddrNR13, AddrNR14)
 	mmu.AddIODevice(ch2, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
 	return apu
 }
 
 type SoundChannel interface {
 	CurrentSample() float32
-	Step()
+	Step(s byte)
 }
 
 var (
@@ -143,26 +151,43 @@ func (apu *APU) Step() {
 	var sampleLeft float32
 	var sampleRight float32
 	apu.sampleT += stepDuration
-	sampleStep := apu.sampleT >= sampleDuration
 
-	for i, sc := range apu.generators {
-		sc.Step()
-		if sampleStep {
-			sample := sc.CurrentSample()
-			sampleLeft += (sample * apu.getVolume(left, i))
-			sampleRight += (sample * apu.getVolume(right, i))
-		}
+	apu.frameSeq--
+	var step byte = 0xFF
+	if apu.frameSeq == 0 {
+		step = apu.frameSeqStep
 	}
 
-	for apu.sampleT >= sampleDuration {
+	for i, sc := range apu.generators {
+		sc.Step(step)
+		sample := sc.CurrentSample()
+		sampleLeft += (sample * apu.getVolume(left, i))
+		sampleRight += (sample * apu.getVolume(right, i))
+	}
+
+	if step != 0xFF {
+		apu.frameSeqStep = (apu.frameSeqStep + 1) % 8
+		apu.frameSeq = frameSequencerTicks
+	}
+
+	apu.sampleCnt++
+	apu.sampleLeft += (sampleLeft / float32(len(apu.generators))) * apu.masterVolume
+	apu.sampleRight += (sampleRight / float32(len(apu.generators))) * apu.masterVolume
+
+	if apu.sampleT >= sampleDuration {
 		apu.sampleT -= sampleDuration
-		sampleLeft = (sampleLeft / float32(len(apu.generators))) * apu.masterVolume
-		sampleRight = (sampleRight / float32(len(apu.generators))) * apu.masterVolume
+
+		sampleLeft = apu.sampleLeft / float32(apu.sampleCnt)
+		sampleRight = apu.sampleRight / float32(apu.sampleCnt)
+		apu.sampleCnt = 0
+		apu.sampleLeft = 0
+		apu.sampleRight = 0
 
 		apu.m.Lock()
 		apu.soundBuffer = append(apu.soundBuffer, sampleLeft, sampleRight)
 		sampleCount := len(apu.soundBuffer)
 		apu.m.Unlock()
+
 		if sampleCount > sampleBufferLength*channelCount*2 {
 			sleepTime := sampleDuration * sampleBufferLength
 			time.Sleep(sleepTime)
