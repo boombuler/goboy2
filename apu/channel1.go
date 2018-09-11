@@ -69,6 +69,7 @@ func (s *soundChannel1) Write(addr uint16, val byte) {
 	if addr == AddrNR10 {
 		s.sweepCtrl = val
 		s.overflowed = false
+		return
 	}
 	s.squareWaveGen.Write(addr, val)
 }
