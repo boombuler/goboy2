@@ -29,7 +29,7 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	screen := &Screen{
 		stop:   make(chan struct{}),
-		render: make(chan *image.RGBA),
+		render: make(chan *image.RGBA, 10),
 		input:  make(chan interface{}),
 	}
 	wnd, err := sdl.CreateWindow("hallo",
@@ -64,6 +64,20 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 		case _, _ = <-screen.stop:
 			return
 		case img := <-screen.render:
+		clearBuff:
+			for {
+				select {
+				case nextImg, ok := <-screen.render:
+					if ok {
+						img = nextImg
+					} else {
+						break
+					}
+				default:
+					break clearBuff
+				}
+			}
+
 			if img != nil {
 				b := img.Bounds()
 				renderer.SetLogicalSize(int32(b.Max.X-b.Min.X), int32(b.Max.Y-b.Min.Y))
@@ -126,6 +140,6 @@ func (s *Screen) Stop() {
 	close(s.stop)
 }
 
-func (s *Screen) Show(img *image.RGBA) {
-	s.render <- img
+func (s *Screen) GetOutputChannel() chan<- *image.RGBA {
+	return s.render
 }

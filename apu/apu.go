@@ -16,21 +16,42 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+type audioChannel bool
+
 const (
-	gbTicksPerSecond               = 4194304 / 4
-	sampleRate                     = 22050
-	sampleBufferSize               = 2048
-	sampleDuration   time.Duration = time.Second / sampleRate
-	stepDuration     time.Duration = time.Second / gbTicksPerSecond
-	sampleSize                     = 4 // sizeOf(float32)
+	left  audioChannel = true
+	right audioChannel = false
+)
+
+const (
+	gbTicksPerSecond                 = 4194304 / 4
+	sampleRate                       = 2 * 22050
+	sampleBufferLength               = 4 * 1024
+	channelCount                     = 2
+	sampleDuration     time.Duration = time.Second / sampleRate
+	stepDuration       time.Duration = time.Second / gbTicksPerSecond
+	sampleSize                       = 4 // sizeOf(float32)
+
+	AddrNR21 uint16 = 0xFF16
+	AddrNR22 uint16 = 0xFF17
+	AddrNR23 uint16 = 0xFF18
+	AddrNR24 uint16 = 0xFF19
+
+	AddrNR50 uint16 = 0xFF24
+	AddrNR51 uint16 = 0xFF25
+	AddrNR52 uint16 = 0xFF26
 )
 
 type APU struct {
-	volume      float32
-	soundBuffer []float32
-	m           *sync.Mutex
+	masterVolume float32
+	soundBuffer  []float32
+	m            *sync.Mutex
 
 	sampleT time.Duration
+
+	volumeSelect  byte
+	channelSelect byte
+	active        bool
 
 	generators []SoundChannel
 	format     sdl.AudioFormat
@@ -38,14 +59,19 @@ type APU struct {
 
 func New(mmu mmu.MMU) *APU {
 	apu := &APU{
-		volume:      0,
-		m:           new(sync.Mutex),
-		soundBuffer: make([]float32, 0),
+		masterVolume: 0.3,
+		m:            new(sync.Mutex),
+		soundBuffer:  make([]float32, 0),
 	}
-	ch2 := newSC2(apu)
+	ch1 := newSC1(apu)
+	ch2 := newSquareWave(apu, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
+
 	apu.generators = []SoundChannel{
+		ch1,
 		ch2,
 	}
+	mmu.AddIODevice(apu, AddrNR50, AddrNR51, AddrNR52)
+	mmu.AddIODevice(ch1, AddrNR11, AddrNR12, AddrNR13, AddrNR14)
 	mmu.AddIODevice(ch2, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
 	return apu
 }
@@ -86,24 +112,76 @@ func sdlAudioCallback(a unsafe.Pointer, stream unsafe.Pointer, l C.int) {
 	apu.m.Unlock()
 }
 
+func (apu *APU) Read(addr uint16) byte {
+	switch addr {
+	case AddrNR50:
+		return apu.volumeSelect
+	case AddrNR51:
+		return apu.channelSelect
+	case AddrNR52:
+		if apu.active {
+			return 0x8F // todo...
+		}
+		return 0x00
+	default:
+		return 0
+	}
+}
+
+func (apu *APU) Write(addr uint16, val byte) {
+	switch addr {
+	case AddrNR50:
+		apu.volumeSelect = val
+	case AddrNR51:
+		apu.channelSelect = val
+	case AddrNR52:
+		apu.active = val&0x80 != 0
+	}
+}
+
 func (apu *APU) Step() {
-	var sum float32
+	var sampleLeft float32
+	var sampleRight float32
 	apu.sampleT += stepDuration
 	sampleStep := apu.sampleT >= sampleDuration
 
-	for _, sc := range apu.generators {
+	for i, sc := range apu.generators {
 		sc.Step()
 		if sampleStep {
-			sum = sum + sc.CurrentSample()
+			sample := sc.CurrentSample()
+			sampleLeft += (sample * apu.getVolume(left, i))
+			sampleRight += (sample * apu.getVolume(right, i))
 		}
 	}
 
 	for apu.sampleT >= sampleDuration {
 		apu.sampleT -= sampleDuration
-		sample := sum / float32(len(apu.generators))
-		sample = sample * apu.volume
-		apu.soundBuffer = append(apu.soundBuffer, sample)
+		sampleLeft = (sampleLeft / float32(len(apu.generators))) * apu.masterVolume
+		sampleRight = (sampleRight / float32(len(apu.generators))) * apu.masterVolume
+
+		apu.m.Lock()
+		apu.soundBuffer = append(apu.soundBuffer, sampleLeft, sampleRight)
+		sampleCount := len(apu.soundBuffer)
+		apu.m.Unlock()
+		if sampleCount > sampleBufferLength*channelCount*2 {
+			sleepTime := sampleDuration * sampleBufferLength
+			time.Sleep(sleepTime)
+		}
 	}
+}
+
+func (apu *APU) getVolume(ch audioChannel, sc int) float32 {
+	if !apu.active {
+		return 0
+	}
+	var soShift uint
+	if ch == left {
+		soShift += 4
+	}
+	if enabled := (apu.channelSelect>>(soShift+uint(sc)))&1 != 0; !enabled {
+		return 0
+	}
+	return float32((apu.volumeSelect>>soShift)&0x3) / 7
 }
 
 // Start audio playback
@@ -115,8 +193,8 @@ func (apu *APU) Start() error {
 	var wanted sdl.AudioSpec
 	wanted.Freq = sampleRate
 	wanted.Format = sdl.AUDIO_F32SYS
-	wanted.Channels = 1
-	wanted.Samples = sampleBufferSize
+	wanted.Channels = channelCount
+	wanted.Samples = sampleBufferLength
 	wanted.Callback = (sdl.AudioCallback)(unsafe.Pointer(C.sdlAudioCallback))
 
 	var have sdl.AudioSpec

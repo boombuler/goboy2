@@ -16,15 +16,16 @@ type GameBoy struct {
 	MMU   mmu.MMU
 	CPU   *cpu.CPU
 	gpu   *gpu.GPU
-	APU   *apu.APU
+	apu   *apu.APU
 	timer *timer.Timer
 	kb    *input.Keyboard
 }
 
+// NewGameBoy creates a new gameboy for the given cartridge
 func NewGameBoy(c *cartridge.Cartridge) *GameBoy {
 	gb := new(GameBoy)
 	gb.MMU = mmu.New()
-	gb.APU = apu.New(gb.MMU)
+	gb.apu = apu.New(gb.MMU)
 	gb.CPU = cpu.New(gb.MMU)
 	gb.gpu = gpu.New(gb.MMU)
 	gb.timer = timer.New(gb.MMU)
@@ -35,24 +36,31 @@ func NewGameBoy(c *cartridge.Cartridge) *GameBoy {
 
 const frameduration = (time.Second / 4194304) * 70224
 
-// StepFrame keeps the gameboy running until the next frame is done
-func (gb *GameBoy) StepFrame() *image.RGBA {
-	starttime := time.Now()
+// Run starts the emulation until the exit chan is closed.
+func (gb *GameBoy) Run(exitChan <-chan struct{}, screen chan<- *image.RGBA) {
+	if err := gb.apu.Start(); err != nil {
+		panic(err)
+	}
 	for {
-		gb.timer.Prepare()
-		gb.CPU.Step()
-		gb.MMU.Step()
-		gb.timer.Step()
-		gb.APU.Step()
+		select {
+		case _, _ = <-exitChan:
+			gb.apu.Stop()
+			return
+		default:
+			gb.timer.Prepare()
+			gb.CPU.Step()
+			gb.MMU.Step()
+			gb.timer.Step()
+			gb.apu.Step()
 
-		if img := gb.gpu.Step(4); img != nil {
-			sleepTime := frameduration - time.Now().Sub(starttime)
-			time.Sleep(sleepTime)
-			return img
+			if img := gb.gpu.Step(4); img != nil {
+				screen <- img
+			}
 		}
 	}
 }
 
+// SetupNoBootRom brings the gameboy to the state after the bootrom finished
 func (gb *GameBoy) SetupNoBootRom() {
 	gb.MMU.Write(mmu.AddrBootmodeFlag, 0x01)
 	gb.CPU.SetRegisterValues(0x0100, 0xFFFE, 0x01, 0x00, 0x13, 0x00, 0xD8, 0xB0, 0x01, 0x4D)
