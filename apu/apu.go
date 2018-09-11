@@ -25,10 +25,10 @@ const (
 
 const (
 	gbFreq                            = 4194304
-	gbTicksPerSecond                  = gbFreq / 4
+	gbTicksPerSecond                  = gbFreq / 4 // use M-Cylces
 	frameSequencerTicks               = gbTicksPerSecond / 512
 	sampleRate                        = 2 * 22050
-	sampleBufferLength                = 4 * 1024
+	sampleBufferLength                = 1024
 	channelCount                      = 2
 	sampleDuration      time.Duration = time.Second / sampleRate
 	stepDuration        time.Duration = time.Second / gbTicksPerSecond
