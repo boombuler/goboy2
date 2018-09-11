@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"goboy2/mmu"
 	"reflect"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -17,20 +18,17 @@ import (
 
 const (
 	gbTicksPerSecond               = 4194304 / 4
-	sampleRate                     = 44100
+	sampleRate                     = 22050
 	sampleBufferSize               = 2048
 	sampleDuration   time.Duration = time.Second / sampleRate
 	stepDuration     time.Duration = time.Second / gbTicksPerSecond
-
-	frameduration   = stepDuration * 17556
-	samplesPerFrame = frameduration / sampleDuration
 )
 
 type APU struct {
 	volume      float64
 	soundBuffer []float32
+	m           *sync.Mutex
 
-	bufIdx  int
 	sampleT time.Duration
 
 	generators []SoundChannel
@@ -40,7 +38,8 @@ type APU struct {
 func New(mmu mmu.MMU) *APU {
 	apu := &APU{
 		volume:      0,
-		soundBuffer: make([]float32, sampleBufferSize*2, sampleBufferSize*2),
+		m:           new(sync.Mutex),
+		soundBuffer: make([]float32, 0),
 	}
 	ch2 := newSC2(apu)
 	apu.generators = []SoundChannel{
@@ -62,19 +61,22 @@ var (
 //export sdlAudioCallback
 func sdlAudioCallback(a unsafe.Pointer, stream unsafe.Pointer, l C.int) {
 	apu := currentAPU
-	length := int(l) / 2
+	length := int(l) / 4
 	outStream := *(*[]float32)(unsafe.Pointer(&reflect.SliceHeader{
 		Data: uintptr(stream),
 		Len:  length,
 		Cap:  length,
 	}))
-	idx := apu.bufIdx
-	apu.bufIdx = 0
-	for i := idx; i < length; i++ {
-		apu.soundBuffer[i] = 0 // clear unfilled buffer
-	}
+	apu.m.Lock()
+	idx := len(apu.soundBuffer)
 
-	copy(outStream, apu.soundBuffer)
+	copy(outStream, apu.soundBuffer[:idx])
+
+	for i := idx; i < length; i++ {
+		outStream[i] = 0 // clear unfilled buffer
+	}
+	apu.soundBuffer = apu.soundBuffer[:0]
+	apu.m.Unlock()
 }
 
 func (apu *APU) Step() {
@@ -89,10 +91,9 @@ func (apu *APU) Step() {
 		}
 	}
 
-	if sampleStep {
+	for apu.sampleT >= sampleDuration {
 		apu.sampleT -= sampleDuration
-		apu.bufIdx++
-		apu.soundBuffer[apu.bufIdx] = sum / float32(len(apu.generators))
+		apu.soundBuffer = append(apu.soundBuffer, sum/float32(len(apu.generators)))
 	}
 }
 
