@@ -73,14 +73,18 @@ func New(mmu mmu.MMU) *APU {
 	}
 	ch1 := newSC1(apu)
 	ch2 := newSquareWave(apu, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
+	ch3 := newWaveChannel()
 
 	apu.generators = []SoundChannel{
 		ch1,
 		ch2,
+		ch3,
 	}
 	mmu.AddIODevice(apu, AddrNR50, AddrNR51, AddrNR52)
 	mmu.AddIODevice(ch1, AddrNR10, AddrNR11, AddrNR12, AddrNR13, AddrNR14)
 	mmu.AddIODevice(ch2, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
+	mmu.AddIODevice(ch3, AddrNR30, AddrNR31, AddrNR32, AddrNR33, AddrNR34)
+	mmu.AddIODevice(ch3, waveRamAddrs()...)
 	return apu
 }
 
