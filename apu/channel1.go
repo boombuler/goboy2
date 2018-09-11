@@ -10,14 +10,15 @@ const (
 
 type soundChannel1 struct {
 	*squareWaveGen
-	sweepCtrl byte
-	timer     int
+	sweepCtrl  byte
+	timer      int
+	overflowed bool
 }
 
 func newSC1(apu *APU) *soundChannel1 {
 	return &soundChannel1{
 		newSquareWave(apu, AddrNR11, AddrNR12, AddrNR13, AddrNR14),
-		0, 0,
+		0, 0, true,
 	}
 }
 
@@ -26,14 +27,21 @@ func (s *soundChannel1) Step(step byte) {
 		if s.timer--; s.timer <= 0 {
 			s.timer = s.sweepTime()
 			// sweep
-			curFreq := s.squareWaveGen.freq()
-			amount := curFreq >> s.sweepShift()
-			if s.sweepUp() {
-				s.squareWaveGen.setFreq(curFreq - amount)
-			} else {
-				s.squareWaveGen.setFreq(curFreq + amount)
-			}
+			if s.sweepShift() > 0 {
+				curFreq := s.squareWaveGen.freq()
+				amount := curFreq >> s.sweepShift()
+				if s.sweepUp() {
+					curFreq = (curFreq - amount)
+				} else {
+					curFreq = (curFreq + amount)
+				}
 
+				if curFreq > 2047 {
+					s.overflowed = true
+				} else {
+					s.squareWaveGen.setFreq(curFreq)
+				}
+			}
 		}
 	}
 	s.squareWaveGen.Step(step)
@@ -60,6 +68,7 @@ func (s *soundChannel1) Read(addr uint16) byte {
 func (s *soundChannel1) Write(addr uint16, val byte) {
 	if addr == AddrNR10 {
 		s.sweepCtrl = val
+		s.overflowed = false
 	}
 	s.squareWaveGen.Write(addr, val)
 }

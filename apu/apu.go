@@ -107,8 +107,11 @@ func sdlAudioCallback(a unsafe.Pointer, stream unsafe.Pointer, l C.int) {
 	copy(outStream, apu.soundBuffer)
 
 	if bufLen > length {
-		copy(apu.soundBuffer[0:], apu.soundBuffer[bufLen:])
-		apu.soundBuffer = apu.soundBuffer[:bufLen-length]
+		bufSize := bufLen - length
+		for i := 0; i < bufSize; i++ {
+			apu.soundBuffer[i] = apu.soundBuffer[i+length]
+		}
+		apu.soundBuffer = apu.soundBuffer[:bufSize]
 	} else {
 		if bufLen < length {
 			for i := bufLen; i < length; i++ {

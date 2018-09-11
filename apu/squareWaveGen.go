@@ -40,7 +40,7 @@ func (s *squareWaveGen) Step(frameStep byte) {
 		s.length--
 	}
 
-	s.timerCnt--
+	s.timerCnt -= 2
 
 	if s.timerCnt <= 0 {
 		s.timerCnt = 2048 - s.freq()
