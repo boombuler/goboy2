@@ -22,10 +22,11 @@ const (
 	sampleBufferSize               = 2048
 	sampleDuration   time.Duration = time.Second / sampleRate
 	stepDuration     time.Duration = time.Second / gbTicksPerSecond
+	sampleSize                     = 4 // sizeOf(float32)
 )
 
 type APU struct {
-	volume      float64
+	volume      float32
 	soundBuffer []float32
 	m           *sync.Mutex
 
@@ -61,29 +62,35 @@ var (
 //export sdlAudioCallback
 func sdlAudioCallback(a unsafe.Pointer, stream unsafe.Pointer, l C.int) {
 	apu := currentAPU
-	length := int(l) / 4
+	length := int(l) / sampleSize
 	outStream := *(*[]float32)(unsafe.Pointer(&reflect.SliceHeader{
 		Data: uintptr(stream),
 		Len:  length,
 		Cap:  length,
 	}))
 	apu.m.Lock()
-	idx := len(apu.soundBuffer)
+	bufLen := len(apu.soundBuffer)
+	copy(outStream, apu.soundBuffer)
 
-	copy(outStream, apu.soundBuffer[:idx])
-
-	for i := idx; i < length; i++ {
-		outStream[i] = 0 // clear unfilled buffer
+	if bufLen > length {
+		copy(apu.soundBuffer[0:], apu.soundBuffer[bufLen:])
+		apu.soundBuffer = apu.soundBuffer[:bufLen-length]
+	} else {
+		if bufLen < length {
+			for i := bufLen; i < length; i++ {
+				outStream[i] = 0 // unfilled buffer
+			}
+		}
+		apu.soundBuffer = apu.soundBuffer[:0]
 	}
-	apu.soundBuffer = apu.soundBuffer[:0]
 	apu.m.Unlock()
 }
 
 func (apu *APU) Step() {
 	var sum float32
-
 	apu.sampleT += stepDuration
 	sampleStep := apu.sampleT >= sampleDuration
+
 	for _, sc := range apu.generators {
 		sc.Step()
 		if sampleStep {
@@ -93,7 +100,9 @@ func (apu *APU) Step() {
 
 	for apu.sampleT >= sampleDuration {
 		apu.sampleT -= sampleDuration
-		apu.soundBuffer = append(apu.soundBuffer, sum/float32(len(apu.generators)))
+		sample := sum / float32(len(apu.generators))
+		sample = sample * apu.volume
+		apu.soundBuffer = append(apu.soundBuffer, sample)
 	}
 }
 
