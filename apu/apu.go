@@ -71,7 +71,7 @@ func New(mmu mmu.MMU) *APU {
 		soundBuffer:  make([]float32, 0),
 		frameSeq:     frameSequencerTicks,
 	}
-	ch1 := newSC1(apu)
+	ch1 := newSweepSquareWaveGen(apu)
 	ch2 := newSquareWave(apu, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
 	ch3 := newWaveChannel()
 
