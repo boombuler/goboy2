@@ -48,13 +48,12 @@ type APU struct {
 	masterVolume float32
 	soundBuffer  []float32
 	m            *sync.Mutex
+	fs           *frameSequencer
 
-	frameSeq     int
-	frameSeqStep byte
-	sampleT      time.Duration
-	sampleCnt    int
-	sampleLeft   float32
-	sampleRight  float32
+	sampleT     time.Duration
+	sampleCnt   int
+	sampleLeft  float32
+	sampleRight float32
 
 	volumeSelect  byte
 	channelSelect byte
@@ -69,7 +68,7 @@ func New(mmu mmu.MMU) *APU {
 		masterVolume: 0.3,
 		m:            new(sync.Mutex),
 		soundBuffer:  make([]float32, 0),
-		frameSeq:     frameSequencerTicks,
+		fs:           newFrameSequencer(),
 	}
 	ch1 := newSweepSquareWaveGen(apu)
 	ch2 := newSquareWave(apu, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
@@ -90,7 +89,7 @@ func New(mmu mmu.MMU) *APU {
 
 type SoundChannel interface {
 	CurrentSample() float32
-	Step(s byte)
+	Step(s sequencerStep)
 }
 
 var (
@@ -159,22 +158,13 @@ func (apu *APU) Step() {
 	var sampleRight float32
 	apu.sampleT += stepDuration
 
-	apu.frameSeq--
-	var step byte = 0xFF
-	if apu.frameSeq == 0 {
-		step = apu.frameSeqStep
-	}
+	step := apu.fs.step()
 
 	for i, sc := range apu.generators {
 		sc.Step(step)
 		sample := sc.CurrentSample()
 		sampleLeft += (sample * apu.getVolume(left, i))
 		sampleRight += (sample * apu.getVolume(right, i))
-	}
-
-	if step != 0xFF {
-		apu.frameSeqStep = (apu.frameSeqStep + 1) % 8
-		apu.frameSeq = frameSequencerTicks
 	}
 
 	apu.sampleCnt++

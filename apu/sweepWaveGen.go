@@ -22,8 +22,8 @@ func newSweepSquareWaveGen(apu *APU) *sweepSquareWaveGen {
 	}
 }
 
-func (s *sweepSquareWaveGen) Step(step byte) {
-	if (step == 2 || step == 6) && s.sweepTime() > 0 {
+func (s *sweepSquareWaveGen) Step(step sequencerStep) {
+	if (step&ssSweep == ssSweep) && s.sweepTime() > 0 {
 		if s.timer--; s.timer <= 0 {
 			s.timer = s.sweepTime()
 			// sweep

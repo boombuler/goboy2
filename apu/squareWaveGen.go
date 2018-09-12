@@ -30,12 +30,12 @@ func newSquareWave(apu *APU, addr1, addr2, addr3, addr4 uint16) *squareWaveGen {
 	return channel
 }
 
-func (s *squareWaveGen) Step(frameStep byte) {
-	if frameStep == 7 {
+func (s *squareWaveGen) Step(frameStep sequencerStep) {
+	if frameStep&ssVolume == ssVolume {
 		s.ve.Step()
 	}
 
-	if frameStep%2 == 0 && s.useLength {
+	if frameStep&ssLength == ssLength && s.useLength {
 		s.lengthCounter--
 	}
 

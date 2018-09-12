@@ -20,16 +20,16 @@ const (
 
 type waveChannel struct {
 	active   bool
-	length   byte
+	length   int
 	timerCnt int
 	sample   float32
-	waveRam  []byte
+	waveRAM  []byte
 	pos      int
 
-	reg34 byte
-	reg33 byte
-	reg32 byte
-	reg31 byte
+	reg34      byte
+	reg33      byte
+	volume     byte
+	lengthLoad byte
 }
 
 func waveRamAddrs() []uint16 {
@@ -42,16 +42,16 @@ func waveRamAddrs() []uint16 {
 
 func newWaveChannel() *waveChannel {
 	return &waveChannel{
-		waveRam: make([]byte, int(WaveRamLen)),
+		waveRAM: make([]byte, int(WaveRamLen)),
 	}
 }
 
 func (wc *waveChannel) CurrentSample() float32 {
 	return wc.sample
 }
-func (wc *waveChannel) Step(frameStep byte) {
+func (wc *waveChannel) Step(frameStep sequencerStep) {
 	useLen := wc.useSoundLength()
-	if frameStep%2 == 0 && useLen {
+	if (frameStep&ssLength == ssLength) && useLen {
 		wc.length--
 	}
 
@@ -64,13 +64,13 @@ func (wc *waveChannel) Step(frameStep byte) {
 			if !useLen || wc.length > 0 {
 				wc.pos = (wc.pos + 1) & 0x1F
 				idx := wc.pos / 2
-				outByte := wc.waveRam[idx]
+				outByte := wc.waveRAM[idx]
 				if wc.pos&1 == 0 {
 					outByte = outByte >> 4
 				}
-				outByte &= 0xF
+				outByte = (outByte & 0x0F) >> wc.volumeShift()
 
-				wc.sample = (float32(outByte) / 15) * wc.volume()
+				wc.sample = float32(outByte) / 15
 			}
 		} else {
 			wc.sample = 0
@@ -78,17 +78,11 @@ func (wc *waveChannel) Step(frameStep byte) {
 	}
 }
 
-func (wc *waveChannel) volume() float32 {
-	switch (wc.reg32 >> 4) & 0x03 {
-	case 1:
-		return 1
-	case 2:
-		return 0.5
-	case 3:
-		return 0.25
-	default:
-		return 0
+func (wc *waveChannel) volumeShift() byte {
+	if wc.volume == 0 {
+		return 4
 	}
+	return wc.volume - 1
 }
 
 func (wc *waveChannel) useSoundLength() bool {
@@ -102,7 +96,7 @@ func (wc *waveChannel) freq() int {
 }
 
 func (wc *waveChannel) setLength() {
-	wc.length = 64 - (wc.reg31 & 0x3F)
+	wc.length = 256 - int(wc.lengthLoad)
 }
 
 func (wc *waveChannel) Read(addr uint16) byte {
@@ -113,15 +107,15 @@ func (wc *waveChannel) Read(addr uint16) byte {
 		}
 		return 0x00
 	case AddrNR31:
-		return wc.reg31
+		return wc.lengthLoad
 	case AddrNR32:
-		return wc.reg32
+		return wc.volume << 5
 	case AddrNR33:
 		return wc.reg33
 	case AddrNR34:
 		return wc.reg34
 	default:
-		return wc.waveRam[addr-AddrWaveRam]
+		return wc.waveRAM[addr-AddrWaveRam]
 	}
 }
 
@@ -130,10 +124,10 @@ func (wc *waveChannel) Write(addr uint16, val byte) {
 	case AddrNR30:
 		wc.active = val&0x80 != 0
 	case AddrNR31:
-		wc.reg31 = val
+		wc.lengthLoad = val
 		wc.setLength()
 	case AddrNR32:
-		wc.reg32 = val
+		wc.volume = (val >> 5) & 0x03
 	case AddrNR33:
 		wc.reg33 = val
 	case AddrNR34:
@@ -143,6 +137,6 @@ func (wc *waveChannel) Write(addr uint16, val byte) {
 			wc.pos = 0
 		}
 	default:
-		wc.waveRam[addr-AddrWaveRam] = val
+		wc.waveRAM[addr-AddrWaveRam] = val
 	}
 }
