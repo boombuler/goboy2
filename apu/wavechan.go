@@ -26,8 +26,8 @@ type waveChannel struct {
 	waveRAM  []byte
 	pos      int
 
-	reg34      byte
-	reg33      byte
+	useLength  bool
+	timerLoad  int
 	volume     byte
 	lengthLoad byte
 }
@@ -50,18 +50,17 @@ func (wc *waveChannel) CurrentSample() float32 {
 	return wc.sample
 }
 func (wc *waveChannel) Step(frameStep sequencerStep) {
-	useLen := wc.useSoundLength()
-	if (frameStep&ssLength == ssLength) && useLen {
+	if (frameStep&ssLength == ssLength) && wc.useLength {
 		wc.length--
 	}
 
 	wc.timerCnt -= 2
 
 	if wc.timerCnt <= 0 {
-		wc.timerCnt = 2048 - wc.freq()
+		wc.timerCnt = 2048 - wc.timerLoad
 
 		if wc.active {
-			if !useLen || wc.length > 0 {
+			if !wc.useLength || wc.length > 0 {
 				wc.pos = (wc.pos + 1) & 0x1F
 				idx := wc.pos / 2
 				outByte := wc.waveRAM[idx]
@@ -85,20 +84,6 @@ func (wc *waveChannel) volumeShift() byte {
 	return wc.volume - 1
 }
 
-func (wc *waveChannel) useSoundLength() bool {
-	return (wc.reg34 & (1 << 6)) != 0
-}
-
-func (wc *waveChannel) freq() int {
-	v := int(wc.reg34 & 7)
-	v = v<<7 | int(wc.reg33)
-	return v
-}
-
-func (wc *waveChannel) setLength() {
-	wc.length = 256 - int(wc.lengthLoad)
-}
-
 func (wc *waveChannel) Read(addr uint16) byte {
 	switch addr {
 	case AddrNR30:
@@ -111,9 +96,13 @@ func (wc *waveChannel) Read(addr uint16) byte {
 	case AddrNR32:
 		return wc.volume << 5
 	case AddrNR33:
-		return wc.reg33
+		return byte(wc.timerLoad)
 	case AddrNR34:
-		return wc.reg34
+		var lenEnabled byte
+		if wc.useLength {
+			lenEnabled = 1
+		}
+		return byte((wc.timerLoad>>8)&0x07) | (lenEnabled << 6)
 	default:
 		return wc.waveRAM[addr-AddrWaveRam]
 	}
@@ -125,18 +114,23 @@ func (wc *waveChannel) Write(addr uint16, val byte) {
 		wc.active = val&0x80 != 0
 	case AddrNR31:
 		wc.lengthLoad = val
-		wc.setLength()
 	case AddrNR32:
 		wc.volume = (val >> 5) & 0x03
 	case AddrNR33:
-		wc.reg33 = val
+		wc.timerLoad = (wc.timerLoad & 0x0700) | int(val)
 	case AddrNR34:
-		wc.reg34 = val
-		if val&(1<<7) != 0 {
-			wc.setLength()
-			wc.pos = 0
+		wc.timerLoad = (wc.timerLoad & 0xFF) | (int(val&0x07) << 8)
+		wc.useLength = val&0x40 != 0x00
+		if val&0x80 != 0 {
+			wc.trigger()
 		}
 	default:
 		wc.waveRAM[addr-AddrWaveRam] = val
 	}
+}
+
+func (wc *waveChannel) trigger() {
+	wc.length = 256 - int(wc.lengthLoad)
+	wc.timerCnt = 2048 - wc.timerLoad
+	wc.pos = 0
 }

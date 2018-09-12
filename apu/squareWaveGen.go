@@ -76,14 +76,8 @@ func (s *squareWaveGen) duty() byte {
 	}
 }
 
-func (s *squareWaveGen) setLength() {
-	s.lengthCounter = 64 - s.lengthLoad
-}
-
 func (s *squareWaveGen) trigger() {
-	if s.lengthCounter == 0 {
-		s.lengthCounter = 64
-	}
+	s.lengthCounter = 64 - s.lengthLoad
 	s.timerCnt = 2048 - s.timerLoad
 	s.ve.Reset()
 }

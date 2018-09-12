@@ -51,7 +51,6 @@ type APU struct {
 	fs           *frameSequencer
 
 	sampleT     time.Duration
-	sampleCnt   int
 	sampleLeft  float32
 	sampleRight float32
 
@@ -153,6 +152,10 @@ func (apu *APU) Write(addr uint16, val byte) {
 	}
 }
 
+func mix(a, b float32) float32 {
+	return a + b - (a * b)
+}
+
 func (apu *APU) Step() {
 	var sampleLeft float32
 	var sampleRight float32
@@ -167,16 +170,15 @@ func (apu *APU) Step() {
 		sampleRight += (sample * apu.getVolume(right, i))
 	}
 
-	apu.sampleCnt++
-	apu.sampleLeft += (sampleLeft / float32(len(apu.generators))) * apu.masterVolume
-	apu.sampleRight += (sampleRight / float32(len(apu.generators))) * apu.masterVolume
+	genCount := float32(len(apu.generators))
+	apu.sampleLeft = mix(apu.sampleLeft, (sampleLeft/genCount)*apu.masterVolume)
+	apu.sampleRight = mix(apu.sampleRight, (sampleLeft/genCount)*apu.masterVolume)
 
 	if apu.sampleT >= sampleDuration {
 		apu.sampleT -= sampleDuration
 
-		sampleLeft = apu.sampleLeft / float32(apu.sampleCnt)
-		sampleRight = apu.sampleRight / float32(apu.sampleCnt)
-		apu.sampleCnt = 0
+		sampleLeft = apu.sampleLeft
+		sampleRight = apu.sampleRight
 		apu.sampleLeft = 0
 		apu.sampleRight = 0
 
