@@ -28,7 +28,7 @@ func (s *soundChannel1) Step(step byte) {
 			s.timer = s.sweepTime()
 			// sweep
 			if s.sweepShift() > 0 {
-				curFreq := s.squareWaveGen.freq()
+				curFreq := s.squareWaveGen.timerLoad
 				amount := curFreq >> s.sweepShift()
 				if s.sweepUp() {
 					curFreq = (curFreq - amount)
@@ -39,7 +39,7 @@ func (s *soundChannel1) Step(step byte) {
 				if curFreq > 2047 {
 					s.overflowed = true
 				} else {
-					s.squareWaveGen.setFreq(curFreq)
+					s.squareWaveGen.timerLoad = curFreq
 				}
 			}
 		}
