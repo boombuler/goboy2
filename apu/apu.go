@@ -50,6 +50,7 @@ const (
 
 // APU implements a gameboy audio processing unit
 type APU struct {
+	mmu          mmu.MMU
 	masterVolume float32
 	soundBuffer  []float32
 	m            *sync.Mutex
@@ -70,6 +71,7 @@ type APU struct {
 func New(mmu mmu.MMU) *APU {
 	apu := &APU{
 		masterVolume: 0.3,
+		mmu:          mmu,
 		m:            new(sync.Mutex),
 		soundBuffer:  make([]float32, 0),
 		fs:           newFrameSequencer(),
@@ -122,8 +124,33 @@ func (apu *APU) Write(addr uint16, val byte) {
 	case addrNR51:
 		apu.channelSelect = val
 	case addrNR52:
+		oldActive := apu.active
 		apu.active = val&0x80 != 0
+		if !oldActive && apu.active {
+			apu.setInitialValues()
+		}
 	}
+}
+
+func (apu *APU) setInitialValues() {
+	apu.mmu.Write(addrNR10, 0x80)
+	apu.mmu.Write(addrNR11, 0xBF)
+	apu.mmu.Write(addrNR12, 0xF3)
+	apu.mmu.Write(addrNR14, 0xBF)
+	apu.mmu.Write(addrNR21, 0x3F)
+	apu.mmu.Write(addrNR22, 0x00)
+	apu.mmu.Write(addrNR24, 0xBF)
+	apu.mmu.Write(addrNR30, 0x7F)
+	apu.mmu.Write(addrNR31, 0xFF)
+	apu.mmu.Write(addrNR32, 0x9F)
+	apu.mmu.Write(addrNR34, 0xBF)
+	apu.mmu.Write(addrNR41, 0xFF)
+	apu.mmu.Write(addrNR42, 0x00)
+	apu.mmu.Write(addrNR43, 0x00)
+	apu.mmu.Write(addrNR44, 0xBF)
+	apu.mmu.Write(addrNR50, 0x77)
+	apu.mmu.Write(addrNR51, 0xF3)
+	apu.mmu.Write(addrNR52, 0xF1)
 }
 
 func mix(a, b float32) float32 {
