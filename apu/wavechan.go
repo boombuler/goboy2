@@ -1,11 +1,11 @@
 package apu
 
 /*
-NR30 FF1A E--- ---- DAC power
-NR31 FF1B LLLL LLLL Length load (256-L)
-NR32 FF1C -VV- ---- Volume code (00=0%, 01=100%, 10=50%, 11=25%)
-NR33 FF1D FFFF FFFF Frequency LSB
-NR34 FF1E TL-- -FFF Trigger, Length enable, Frequency MSB
+NR30 E--- ---- DAC power
+NR31 LLLL LLLL Length load (256-L)
+NR32 -VV- ---- Volume code (00=0%, 01=100%, 10=50%, 11=25%)
+NR33 FFFF FFFF Frequency LSB
+NR34 TL-- -FFF Trigger, Length enable, Frequency MSB
 */
 
 const (

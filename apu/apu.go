@@ -38,7 +38,10 @@ const (
 	AddrNR22 uint16 = 0xFF17
 	AddrNR23 uint16 = 0xFF18
 	AddrNR24 uint16 = 0xFF19
-
+	AddrNR41 uint16 = 0xFF20
+	AddrNR42 uint16 = 0xFF21
+	AddrNR43 uint16 = 0xFF22
+	AddrNR44 uint16 = 0xFF23
 	AddrNR50 uint16 = 0xFF24
 	AddrNR51 uint16 = 0xFF25
 	AddrNR52 uint16 = 0xFF26
@@ -72,17 +75,20 @@ func New(mmu mmu.MMU) *APU {
 	ch1 := newSweepSquareWaveGen(apu)
 	ch2 := newSquareWave(apu, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
 	ch3 := newWaveChannel()
+	ch4 := newNoiseGen()
 
 	apu.generators = []SoundChannel{
 		ch1,
 		ch2,
 		ch3,
+		ch4,
 	}
 	mmu.AddIODevice(apu, AddrNR50, AddrNR51, AddrNR52)
 	mmu.AddIODevice(ch1, AddrNR10, AddrNR11, AddrNR12, AddrNR13, AddrNR14)
 	mmu.AddIODevice(ch2, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
 	mmu.AddIODevice(ch3, AddrNR30, AddrNR31, AddrNR32, AddrNR33, AddrNR34)
 	mmu.AddIODevice(ch3, waveRamAddrs()...)
+	mmu.AddIODevice(ch4, AddrNR41, AddrNR42, AddrNR43, AddrNR44)
 	return apu
 }
 

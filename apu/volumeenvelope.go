@@ -36,3 +36,18 @@ func (ve *volumeEnvelope) Step() {
 		}
 	}
 }
+
+func (ve *volumeEnvelope) Write(val byte) {
+	ve.VolumeLoad = (val >> 4) & 0x0F
+	ve.Increase = (val & 0x08) != 0
+	ve.periodLoad = (val & 0x07)
+	ve.Reset()
+}
+
+func (ve *volumeEnvelope) Read() byte {
+	var inc byte
+	if ve.Increase {
+		inc = 1
+	}
+	return byte(ve.periodLoad&0x07) | (inc << 3) | (ve.VolumeLoad << 4)
+}

@@ -87,11 +87,7 @@ func (s *squareWaveGen) Read(addr uint16) byte {
 	case s.addr1:
 		return (s.lengthLoad & 0x3F) | ((s.dutyMode & 0x03) << 6)
 	case s.addr2:
-		var inc byte
-		if s.ve.Increase {
-			inc = 1
-		}
-		return byte(s.ve.periodLoad&0x07) | (inc << 3) | (s.ve.VolumeLoad << 4)
+		return s.ve.Read()
 	case s.addr3:
 		return byte(s.timerLoad)
 	case s.addr4:
@@ -113,10 +109,7 @@ func (s *squareWaveGen) Write(addr uint16, val byte) {
 		s.dutyMode = (val >> 6) & 0x03
 	case s.addr2:
 		s.dacEnabled = val&0xF8 != 0
-		s.ve.VolumeLoad = (val >> 4) & 0x0F
-		s.ve.Increase = (val & 0x08) != 0
-		s.ve.periodLoad = (val & 0x07)
-		s.ve.Reset()
+		s.ve.Write(val)
 	case s.addr3:
 		s.timerLoad = (s.timerLoad & 0x0700) | int(val)
 	case s.addr4:
