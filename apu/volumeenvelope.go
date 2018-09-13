@@ -1,11 +1,5 @@
 package apu
 
-import "time"
-
-const (
-	sweepInterval = time.Second / 128
-)
-
 type volumeEnvelope struct {
 	volume     byte
 	VolumeLoad byte

@@ -1,19 +1,9 @@
 package apu
 
-/*
-void sdlAudioCallback(void*  userdata, void* stream, int len);
-*/
-import "C"
-
 import (
-	"fmt"
 	"goboy2/mmu"
-	"reflect"
 	"sync"
 	"time"
-	"unsafe"
-
-	"github.com/veandco/go-sdl2/sdl"
 )
 
 type audioChannel bool
@@ -34,19 +24,31 @@ const (
 	stepDuration        time.Duration = time.Second / gbTicksPerSecond
 	sampleSize                        = 4 // sizeOf(float32)
 
-	AddrNR21 uint16 = 0xFF16
-	AddrNR22 uint16 = 0xFF17
-	AddrNR23 uint16 = 0xFF18
-	AddrNR24 uint16 = 0xFF19
-	AddrNR41 uint16 = 0xFF20
-	AddrNR42 uint16 = 0xFF21
-	AddrNR43 uint16 = 0xFF22
-	AddrNR44 uint16 = 0xFF23
-	AddrNR50 uint16 = 0xFF24
-	AddrNR51 uint16 = 0xFF25
-	AddrNR52 uint16 = 0xFF26
+	addrNR10    uint16 = 0xFF10
+	addrNR11    uint16 = 0xFF11
+	addrNR12    uint16 = 0xFF12
+	addrNR13    uint16 = 0xFF13
+	addrNR14    uint16 = 0xFF14
+	addrNR21    uint16 = 0xFF16
+	addrNR22    uint16 = 0xFF17
+	addrNR23    uint16 = 0xFF18
+	addrNR24    uint16 = 0xFF19
+	addrNR30    uint16 = 0xFF1A
+	addrNR31    uint16 = 0xFF1B
+	addrNR32    uint16 = 0xFF1C
+	addrNR33    uint16 = 0xFF1D
+	addrNR34    uint16 = 0xFF1E
+	addrNR41    uint16 = 0xFF20
+	addrNR42    uint16 = 0xFF21
+	addrNR43    uint16 = 0xFF22
+	addrNR44    uint16 = 0xFF23
+	addrNR50    uint16 = 0xFF24
+	addrNR51    uint16 = 0xFF25
+	addrNR52    uint16 = 0xFF26
+	addrWaveRAM uint16 = 0xFF30
 )
 
+// APU implements a gameboy audio processing unit
 type APU struct {
 	masterVolume float32
 	soundBuffer  []float32
@@ -61,10 +63,10 @@ type APU struct {
 	channelSelect byte
 	active        bool
 
-	generators []SoundChannel
-	format     sdl.AudioFormat
+	generators []soundChannel
 }
 
+// New creates a new gameboy APU
 func New(mmu mmu.MMU) *APU {
 	apu := &APU{
 		masterVolume: 0.3,
@@ -73,71 +75,37 @@ func New(mmu mmu.MMU) *APU {
 		fs:           newFrameSequencer(),
 	}
 	ch1 := newSweepSquareWaveGen(apu)
-	ch2 := newSquareWave(apu, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
+	ch2 := newSquareWave(apu, addrNR21, addrNR22, addrNR23, addrNR24)
 	ch3 := newWaveChannel()
 	ch4 := newNoiseGen()
 
-	apu.generators = []SoundChannel{
+	apu.generators = []soundChannel{
 		ch1,
 		ch2,
 		ch3,
 		ch4,
 	}
-	mmu.AddIODevice(apu, AddrNR50, AddrNR51, AddrNR52)
-	mmu.AddIODevice(ch1, AddrNR10, AddrNR11, AddrNR12, AddrNR13, AddrNR14)
-	mmu.AddIODevice(ch2, AddrNR21, AddrNR22, AddrNR23, AddrNR24)
-	mmu.AddIODevice(ch3, AddrNR30, AddrNR31, AddrNR32, AddrNR33, AddrNR34)
-	mmu.AddIODevice(ch3, waveRamAddrs()...)
-	mmu.AddIODevice(ch4, AddrNR41, AddrNR42, AddrNR43, AddrNR44)
+	mmu.AddIODevice(apu, addrNR50, addrNR51, addrNR52)
+	mmu.AddIODevice(ch1, addrNR10, addrNR11, addrNR12, addrNR13, addrNR14)
+	mmu.AddIODevice(ch2, addrNR21, addrNR22, addrNR23, addrNR24)
+	mmu.AddIODevice(ch3, addrNR30, addrNR31, addrNR32, addrNR33, addrNR34)
+	mmu.AddIODevice(ch3, waveRAMAddrs()...)
+	mmu.AddIODevice(ch4, addrNR41, addrNR42, addrNR43, addrNR44)
 	return apu
 }
 
-type SoundChannel interface {
+type soundChannel interface {
 	CurrentSample() float32
 	Step(s sequencerStep)
 }
 
-var (
-	currentAPU *APU
-)
-
-//export sdlAudioCallback
-func sdlAudioCallback(a unsafe.Pointer, stream unsafe.Pointer, l C.int) {
-	apu := currentAPU
-	length := int(l) / sampleSize
-	outStream := *(*[]float32)(unsafe.Pointer(&reflect.SliceHeader{
-		Data: uintptr(stream),
-		Len:  length,
-		Cap:  length,
-	}))
-	apu.m.Lock()
-	bufLen := len(apu.soundBuffer)
-	copy(outStream, apu.soundBuffer)
-
-	if bufLen > length {
-		bufSize := bufLen - length
-		for i := 0; i < bufSize; i++ {
-			apu.soundBuffer[i] = apu.soundBuffer[i+length]
-		}
-		apu.soundBuffer = apu.soundBuffer[:bufSize]
-	} else {
-		if bufLen < length {
-			for i := bufLen; i < length; i++ {
-				outStream[i] = 0 // unfilled buffer
-			}
-		}
-		apu.soundBuffer = apu.soundBuffer[:0]
-	}
-	apu.m.Unlock()
-}
-
 func (apu *APU) Read(addr uint16) byte {
 	switch addr {
-	case AddrNR50:
+	case addrNR50:
 		return apu.volumeSelect
-	case AddrNR51:
+	case addrNR51:
 		return apu.channelSelect
-	case AddrNR52:
+	case addrNR52:
 		if apu.active {
 			return 0x8F // todo...
 		}
@@ -149,11 +117,11 @@ func (apu *APU) Read(addr uint16) byte {
 
 func (apu *APU) Write(addr uint16, val byte) {
 	switch addr {
-	case AddrNR50:
+	case addrNR50:
 		apu.volumeSelect = val
-	case AddrNR51:
+	case addrNR51:
 		apu.channelSelect = val
-	case AddrNR52:
+	case addrNR52:
 		apu.active = val&0x80 != 0
 	}
 }
@@ -162,6 +130,7 @@ func mix(a, b float32) float32 {
 	return a + b - (a * b)
 }
 
+// Step Executes the next apu step
 func (apu *APU) Step() {
 	var sampleLeft float32
 	var sampleRight float32
@@ -212,38 +181,4 @@ func (apu *APU) getVolume(ch audioChannel, sc int) float32 {
 		return 0
 	}
 	return float32((apu.volumeSelect>>soShift)&0x3) / 7
-}
-
-// Start audio playback
-func (apu *APU) Start() error {
-	if err := sdl.InitSubSystem(sdl.INIT_AUDIO); err != nil {
-		return err
-	}
-
-	var wanted sdl.AudioSpec
-	wanted.Freq = sampleRate
-	wanted.Format = sdl.AUDIO_F32SYS
-	wanted.Channels = channelCount
-	wanted.Samples = sampleBufferLength
-	wanted.Callback = (sdl.AudioCallback)(unsafe.Pointer(C.sdlAudioCallback))
-
-	var have sdl.AudioSpec
-	if err := sdl.OpenAudio(&wanted, &have); err != nil {
-		return err
-	} else if wanted.Format != have.Format {
-		sdl.CloseAudio()
-		return fmt.Errorf("unsupported audio format: %v", have.Format)
-	}
-	apu.format = have.Format
-	currentAPU = apu
-	sdl.PauseAudio(false) // start audio playing.
-	return nil
-}
-
-// Stop audio playback
-func (apu *APU) Stop() {
-	sdl.CloseAudio()
-	if currentAPU == apu {
-		currentAPU = nil
-	}
 }

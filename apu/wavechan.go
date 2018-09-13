@@ -1,21 +1,7 @@
 package apu
 
-/*
-NR30 E--- ---- DAC power
-NR31 LLLL LLLL Length load (256-L)
-NR32 -VV- ---- Volume code (00=0%, 01=100%, 10=50%, 11=25%)
-NR33 FFFF FFFF Frequency LSB
-NR34 TL-- -FFF Trigger, Length enable, Frequency MSB
-*/
-
 const (
-	AddrNR30    uint16 = 0xFF1A
-	AddrNR31    uint16 = 0xFF1B
-	AddrNR32    uint16 = 0xFF1C
-	AddrNR33    uint16 = 0xFF1D
-	AddrNR34    uint16 = 0xFF1E
-	AddrWaveRam uint16 = 0xFF30
-	WaveRamLen  uint16 = 0x0010
+	waveRAMLen uint16 = 0x0010
 )
 
 type waveChannel struct {
@@ -32,9 +18,9 @@ type waveChannel struct {
 	lengthLoad byte
 }
 
-func waveRamAddrs() []uint16 {
+func waveRAMAddrs() []uint16 {
 	res := make([]uint16, 0, 0x10)
-	for a := uint16(AddrWaveRam); a < AddrWaveRam+WaveRamLen; a++ {
+	for a := uint16(addrWaveRAM); a < addrWaveRAM+waveRAMLen; a++ {
 		res = append(res, a)
 	}
 	return res
@@ -42,7 +28,7 @@ func waveRamAddrs() []uint16 {
 
 func newWaveChannel() *waveChannel {
 	return &waveChannel{
-		waveRAM: make([]byte, int(WaveRamLen)),
+		waveRAM: make([]byte, int(waveRAMLen)),
 	}
 }
 
@@ -86,46 +72,46 @@ func (wc *waveChannel) volumeShift() byte {
 
 func (wc *waveChannel) Read(addr uint16) byte {
 	switch addr {
-	case AddrNR30:
+	case addrNR30:
 		if wc.active {
 			return 0x80
 		}
 		return 0x00
-	case AddrNR31:
+	case addrNR31:
 		return wc.lengthLoad
-	case AddrNR32:
+	case addrNR32:
 		return wc.volume << 5
-	case AddrNR33:
+	case addrNR33:
 		return byte(wc.timerLoad)
-	case AddrNR34:
+	case addrNR34:
 		var lenEnabled byte
 		if wc.useLength {
 			lenEnabled = 1
 		}
 		return byte((wc.timerLoad>>8)&0x07) | (lenEnabled << 6)
 	default:
-		return wc.waveRAM[addr-AddrWaveRam]
+		return wc.waveRAM[addr-addrWaveRAM]
 	}
 }
 
 func (wc *waveChannel) Write(addr uint16, val byte) {
 	switch addr {
-	case AddrNR30:
+	case addrNR30:
 		wc.active = val&0x80 != 0
-	case AddrNR31:
+	case addrNR31:
 		wc.lengthLoad = val
-	case AddrNR32:
+	case addrNR32:
 		wc.volume = (val >> 5) & 0x03
-	case AddrNR33:
+	case addrNR33:
 		wc.timerLoad = (wc.timerLoad & 0x0700) | int(val)
-	case AddrNR34:
+	case addrNR34:
 		wc.timerLoad = (wc.timerLoad & 0xFF) | (int(val&0x07) << 8)
 		wc.useLength = val&0x40 != 0x00
 		if val&0x80 != 0 {
 			wc.trigger()
 		}
 	default:
-		wc.waveRAM[addr-AddrWaveRam] = val
+		wc.waveRAM[addr-addrWaveRAM] = val
 	}
 }
 

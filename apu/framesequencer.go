@@ -8,7 +8,7 @@ type frameSequencer struct {
 type sequencerStep byte
 
 const (
-	ssOther  sequencerStep = 0
+	ssNone   sequencerStep = 0
 	ssLength sequencerStep = 1 << iota
 	ssVolume
 	ssSweep
@@ -31,7 +31,7 @@ func (fs *frameSequencer) step() sequencerStep {
 		fs.counter = frameSequencerTicks
 	}
 
-	result := ssOther
+	result := ssNone
 	if stepNo%2 == 0 {
 		result |= ssLength
 	}
