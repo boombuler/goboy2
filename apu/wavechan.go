@@ -40,10 +40,10 @@ func (wc *waveChannel) Step(frameStep sequencerStep) {
 		wc.length--
 	}
 
-	wc.timerCnt -= 2
+	wc.timerCnt--
 
 	if wc.timerCnt <= 0 {
-		wc.timerCnt = 2048 - wc.timerLoad
+		wc.reloadTimer()
 
 		if wc.active {
 			if !wc.useLength || wc.length > 0 {
@@ -68,6 +68,10 @@ func (wc *waveChannel) volumeShift() byte {
 		return 4
 	}
 	return wc.volume - 1
+}
+
+func (wc *waveChannel) reloadTimer() {
+	wc.timerCnt = (2048 - wc.timerLoad) / 2
 }
 
 func (wc *waveChannel) Read(addr uint16) byte {
@@ -117,6 +121,6 @@ func (wc *waveChannel) Write(addr uint16, val byte) {
 
 func (wc *waveChannel) trigger() {
 	wc.length = 256 - int(wc.lengthLoad)
-	wc.timerCnt = 2048 - wc.timerLoad
+	wc.reloadTimer()
 	wc.pos = 0
 }

@@ -39,10 +39,10 @@ func (s *squareWaveGen) Step(frameStep sequencerStep) {
 		s.lengthCounter--
 	}
 
-	s.timerCnt -= 2
+	s.timerCnt--
 
 	if s.timerCnt <= 0 {
-		s.timerCnt = 2048 - s.timerLoad
+		s.reloadTimer()
 		s.dutyIdx = (s.dutyIdx + 1) % 8
 
 		if !s.useLength || s.lengthCounter > 0 {
@@ -76,9 +76,13 @@ func (s *squareWaveGen) duty() byte {
 	}
 }
 
+func (s *squareWaveGen) reloadTimer() {
+	s.timerCnt = (2048 - s.timerLoad)
+}
+
 func (s *squareWaveGen) trigger() {
 	s.lengthCounter = 64 - s.lengthLoad
-	s.timerCnt = 2048 - s.timerLoad
+	s.reloadTimer()
 	s.ve.Reset()
 }
 
