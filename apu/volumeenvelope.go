@@ -8,6 +8,14 @@ type volumeEnvelope struct {
 	periodLoad byte
 }
 
+func (ve *volumeEnvelope) reset() {
+	ve.volume = 0
+	ve.VolumeLoad = 0
+	ve.Increase = false
+	ve.period = 0
+	ve.periodLoad = 0
+}
+
 func (ve *volumeEnvelope) Volume() float32 {
 	return float32(ve.volume) / 15
 }

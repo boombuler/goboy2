@@ -14,6 +14,13 @@ func newSweepSquareWaveGen(apu *APU) *sweepSquareWaveGen {
 	}
 }
 
+func (s *sweepSquareWaveGen) Reset() {
+	s.squareWaveGen.Reset()
+	s.sweepCtrl = 0
+	s.timer = 0
+	s.overflowed = true
+}
+
 func (s *sweepSquareWaveGen) Step(step sequencerStep) {
 	if (step&ssSweep == ssSweep) && s.sweepTime() > 0 {
 		if s.timer--; s.timer <= 0 {

@@ -32,6 +32,18 @@ func newWaveChannel() *waveChannel {
 	}
 }
 
+func (wc *waveChannel) Reset() {
+	wc.active = false
+	wc.length = 0
+	wc.timerCnt = 0
+	wc.sample = 0
+	wc.pos = 0
+	wc.useLength = true
+	wc.timerLoad = 0
+	wc.volume = 0
+	wc.lengthLoad = 0
+}
+
 func (wc *waveChannel) CurrentSample() float32 {
 	return wc.sample
 }

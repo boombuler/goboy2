@@ -144,7 +144,9 @@ type opCodeTable [256]opCode
 
 func (t opCodeTable) Exec(cpu *CPU, state *ocState) {}
 func (t opCodeTable) Next(state *ocState) opCode {
-	return t[state.popB()]
+	x := state.popB()
+	state.pushB(x)
+	return t[x]
 }
 
 func (t opCodeTable) TakesCycle() bool {

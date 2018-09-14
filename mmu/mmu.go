@@ -1,5 +1,9 @@
 package mmu
 
+import (
+	"fmt"
+)
+
 type MMU interface {
 	IODevice
 	Read16(addr uint16) uint16
@@ -70,6 +74,10 @@ func (m *mmuImpl) SetGraphicRam(vram, oam IODevice) {
 }
 
 func (m *mmuImpl) Read(addr uint16) byte {
+	if addr == 0xff14 {
+		fmt.Println("READ")
+	}
+
 	// [FF80-FFFE] Zero-page RAM
 	if addr >= 0xFF80 && addr < 0xFFFF {
 		return m.zpram[addr-0xFF80]

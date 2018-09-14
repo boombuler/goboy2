@@ -93,12 +93,26 @@ func New(mmu mmu.MMU) *APU {
 	mmu.AddIODevice(ch3, addrNR30, addrNR31, addrNR32, addrNR33, addrNR34)
 	mmu.AddIODevice(ch3, waveRAMAddrs()...)
 	mmu.AddIODevice(ch4, addrNR41, addrNR42, addrNR43, addrNR44)
+	apu.reset()
 	return apu
 }
 
 type soundChannel interface {
 	CurrentSample() float32
 	Step(s sequencerStep)
+	Reset()
+}
+
+func (apu *APU) reset() {
+	apu.volumeSelect = 0
+	apu.channelSelect = 0
+	apu.sampleLeft = 0
+	apu.sampleRight = 0
+	apu.active = false
+	apu.fs.reset()
+	for _, ch := range apu.generators {
+		ch.Reset()
+	}
 }
 
 func (apu *APU) Read(addr uint16) byte {
@@ -126,31 +140,10 @@ func (apu *APU) Write(addr uint16, val byte) {
 	case addrNR52:
 		oldActive := apu.active
 		apu.active = val&0x80 != 0
-		if !oldActive && apu.active {
-			apu.setInitialValues()
+		if oldActive && !apu.active {
+			apu.reset()
 		}
 	}
-}
-
-func (apu *APU) setInitialValues() {
-	apu.mmu.Write(addrNR10, 0x80)
-	apu.mmu.Write(addrNR11, 0xBF)
-	apu.mmu.Write(addrNR12, 0xF3)
-	apu.mmu.Write(addrNR14, 0xBF)
-	apu.mmu.Write(addrNR21, 0x3F)
-	apu.mmu.Write(addrNR22, 0x00)
-	apu.mmu.Write(addrNR24, 0xBF)
-	apu.mmu.Write(addrNR30, 0x7F)
-	apu.mmu.Write(addrNR31, 0xFF)
-	apu.mmu.Write(addrNR32, 0x9F)
-	apu.mmu.Write(addrNR34, 0xBF)
-	apu.mmu.Write(addrNR41, 0xFF)
-	apu.mmu.Write(addrNR42, 0x00)
-	apu.mmu.Write(addrNR43, 0x00)
-	apu.mmu.Write(addrNR44, 0xBF)
-	apu.mmu.Write(addrNR50, 0x77)
-	apu.mmu.Write(addrNR51, 0xF3)
-	apu.mmu.Write(addrNR52, 0xF1)
 }
 
 func mix(a, b float32) float32 {
@@ -162,6 +155,24 @@ func (apu *APU) Step() {
 	var sampleLeft float32
 	var sampleRight float32
 	apu.sampleT += stepDuration
+
+	if !apu.active {
+		apu.sampleLeft = 0
+		apu.sampleRight = 0
+
+		if apu.sampleT >= sampleDuration {
+			apu.sampleT -= sampleDuration
+			apu.m.Lock()
+			apu.soundBuffer = append(apu.soundBuffer, sampleLeft, sampleRight)
+			sampleCount := len(apu.soundBuffer)
+			apu.m.Unlock()
+			if sampleCount > sampleBufferLength*channelCount*2 {
+				sleepTime := sampleDuration * sampleBufferLength
+				time.Sleep(sleepTime)
+			}
+		}
+		return
+	}
 
 	step := apu.fs.step()
 

@@ -21,6 +21,11 @@ func newFrameSequencer() *frameSequencer {
 	}
 }
 
+func (fs *frameSequencer) reset() {
+	fs.counter = 0
+	fs.curStep = 0
+}
+
 func (fs *frameSequencer) step() sequencerStep {
 	fs.counter--
 

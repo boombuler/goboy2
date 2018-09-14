@@ -30,6 +30,17 @@ func (ng *noiseGen) CurrentSample() float32 {
 	}
 	return 0
 }
+func (ng *noiseGen) Reset() {
+	ng.ve.reset()
+	ng.hi = false
+	ng.timerCnt = 0
+	ng.length = 0
+	ng.lengthLoad = 0
+	ng.useLength = true
+	ng.clockShift = 0
+	ng.widthMode = false
+	ng.divisor = 0
+}
 
 func (ng *noiseGen) Step(frameStep sequencerStep) {
 	if (frameStep&ssLength == ssLength) && ng.useLength {

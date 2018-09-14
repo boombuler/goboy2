@@ -30,6 +30,19 @@ func newSquareWave(apu *APU, addr1, addr2, addr3, addr4 uint16) *squareWaveGen {
 	return channel
 }
 
+func (s *squareWaveGen) Reset() {
+	s.ve.reset()
+	s.timerCnt = 0
+	s.dutyIdx = 0
+	s.lengthCounter = 0
+	s.hi = false
+	s.dacEnabled = false
+	s.dutyMode = 0
+	s.lengthLoad = 0
+	s.timerLoad = 0
+	s.useLength = true
+}
+
 func (s *squareWaveGen) Step(frameStep sequencerStep) {
 	if frameStep&ssVolume == ssVolume {
 		s.ve.Step()
