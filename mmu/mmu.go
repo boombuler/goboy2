@@ -1,16 +1,10 @@
 package mmu
 
-import (
-	"fmt"
-)
-
 type MMU interface {
 	IODevice
-	Read16(addr uint16) uint16
-	Write16(addr uint16, value uint16)
 	RequestInterrupt(i IRQ)
 	GetCurrentIterrupt() IRQ
-	SetGraphicRam(vram, oram IODevice)
+	ConnectPPU(ppu IODevice)
 	LoadCartridge(cartridge IODevice)
 	AddIODevice(d IODevice, addrs ...uint16)
 	Step()
@@ -19,7 +13,7 @@ type MMU interface {
 type mmuImpl struct {
 	ioDevices []IODevice
 	cartridge IODevice
-	vram, oam IODevice
+	ppu       IODevice
 	ram       [2 * 4096]byte
 	zpram     [127]byte
 	dma       *dmaTransfer
@@ -68,16 +62,11 @@ func (m *mmuImpl) LoadCartridge(cartridge IODevice) {
 	m.cartridge = cartridge
 }
 
-func (m *mmuImpl) SetGraphicRam(vram, oam IODevice) {
-	m.vram = vram
-	m.oam = oam
+func (m *mmuImpl) ConnectPPU(ppu IODevice) {
+	m.ppu = ppu
 }
 
 func (m *mmuImpl) Read(addr uint16) byte {
-	if addr == 0xff14 {
-		fmt.Println("READ")
-	}
-
 	// [FF80-FFFE] Zero-page RAM
 	if addr >= 0xFF80 && addr < 0xFFFF {
 		return m.zpram[addr-0xFF80]
@@ -97,7 +86,7 @@ func (m *mmuImpl) Read(addr uint16) byte {
 		return m.cartridge.Read(addr)
 	// [8000-9FFF] Graphics RAM
 	case addr >= 0x8000 && addr <= 0x9FFF:
-		return m.vram.Read(addr)
+		return m.ppu.Read(addr)
 	// [A000-BFFF] Cartridge (External) RAM
 	case addr >= 0xA000 && addr <= 0xBFFF:
 		return m.cartridge.Read(addr)
@@ -109,7 +98,7 @@ func (m *mmuImpl) Read(addr uint16) byte {
 		return m.ram[addr-0xE000]
 	// [FE00-FE9F] Graphics: sprite information
 	case addr >= 0xFE00 && addr <= 0xFE9F:
-		return m.oam.Read(addr)
+		return m.ppu.Read(addr)
 	// [FF00-FF7F] Memory-mapped I/O
 	case (addr >= 0xFF00 && addr <= 0xFF7F) || addr == 0xFFFF:
 		if d := m.ioDevices[addr&0xFF]; d != nil {
@@ -139,7 +128,7 @@ func (m *mmuImpl) Write(addr uint16, value byte) {
 		m.cartridge.Write(addr, value)
 	// [8000-9FFF] Graphics RAM
 	case addr >= 0x8000 && addr <= 0x9FFF:
-		m.vram.Write(addr, value)
+		m.ppu.Write(addr, value)
 	// [A000-BFFF] Cartridge (External) RAM
 	case addr >= 0xA000 && addr <= 0xBFFF:
 		m.cartridge.Write(addr, value)
@@ -151,22 +140,13 @@ func (m *mmuImpl) Write(addr uint16, value byte) {
 		m.ram[addr-0xE000] = value
 	// [FE00-FE9F] Graphics: sprite information
 	case addr >= 0xFE00 && addr <= 0xFE9F:
-		m.oam.Write(addr, value)
+		m.ppu.Write(addr, value)
 	// [FF00-FF7F] Memory-mapped I/O
 	case (addr >= 0xFF00 && addr <= 0xFF7F) || addr == 0xFFFF:
 		if d := m.ioDevices[addr&0xFF]; d != nil {
 			d.Write(addr, value)
 		}
 	}
-}
-
-func (m *mmuImpl) Read16(addr uint16) uint16 {
-	return uint16(m.Read(addr)) | (uint16(m.Read(addr+1)) << 8)
-}
-
-func (m *mmuImpl) Write16(addr uint16, value uint16) {
-	m.Write(addr, byte(value))
-	m.Write(addr+1, byte(value>>8))
 }
 
 func (m *mmuImpl) RequestInterrupt(i IRQ) {

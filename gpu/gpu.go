@@ -94,6 +94,13 @@ func (g *GPU) Read(addr uint16) byte {
 	case WY:
 		return g.wy
 	default:
+		if addr >= 0x8000 && addr <= 0x9FFF {
+			return g.vram.Read(addr)
+		} else if addr >= 0xFE00 && addr <= 0xFE9F {
+			return g.oam.Read(addr)
+		}
+		return 0
+
 		return 0x00
 	}
 }
@@ -146,6 +153,12 @@ func (g *GPU) Write(addr uint16, value byte) {
 	case OBJECTPALETTE_1:
 		g.op1 = value
 		g.objectPalettes[1] = g.byteToPalette(value)
+	default:
+		if addr >= 0x8000 && addr <= 0x9FFF {
+			g.vram.Write(addr, value)
+		} else if addr >= 0xFE00 && addr <= 0xFE9F {
+			g.oam.Write(addr, value)
+		}
 	}
 }
 
@@ -155,7 +168,7 @@ func New(m mmu.MMU) *GPU {
 	gpu.clock = 456
 	gpu.screen = newScreen()
 	gpu.vram, gpu.oam = newVRam(), newOAM()
-	m.SetGraphicRam(gpu.vram, gpu.oam)
+	m.ConnectPPU(gpu)
 	m.AddIODevice(gpu, LCDC, STAT, SCROLLY, SCROLLX, LY, LYC, BGP, OBJECTPALETTE_0, OBJECTPALETTE_1, WY, WX)
 	gpu.Write(LCDC, 0x80)
 	return gpu
@@ -374,7 +387,10 @@ func (g *GPU) drawSpriteTileLine(sa *spriteData, tileId, tileY int) {
 				x := sa.X + tileX
 				if x < DISPLAY_WIDTH && x >= 0 {
 					if sa.Priority() || g.noBGAt(x, y) {
-						g.screen.Set(x, y, g.objectPalettes[sa.Palette()][color])
+						col := g.objectPalettes[sa.Palette()][color]
+						if col != nil {
+							g.screen.Set(x, y, col)
+						}
 					}
 				}
 			}
