@@ -20,17 +20,18 @@ type fetcher struct {
 	fifo      *pixelFiFo
 	pixBuffer []byte
 
-	mapAddress  uint16
-	tileAddress uint16
-	xOffset     uint16
-	signedIDs   bool
-	tileLine    byte
-	tileID      byte
-	tileData1   byte
-	tileData2   byte
-	skipTick    bool
-	sprite      *spriteData
-	spriteLine  byte
+	mapAddress   uint16
+	tileAddress  uint16
+	xOffset      uint16
+	signedIDs    bool
+	tileLine     byte
+	tileID       byte
+	tileData1    byte
+	tileData2    byte
+	skipTick     bool
+	sprite       *spriteData
+	spriteLine   byte
+	spriteOffset byte
 }
 
 var (
@@ -45,12 +46,24 @@ func newFetcher(fifo *pixelFiFo) *fetcher {
 }
 
 func (f *fetcher) reset() {
-
+	f.disabled = false
+	f.state = fsReadTileID
+	f.tileID = 0
+	f.tileData1 = 0
+	f.tileData2 = 0
+	f.skipTick = true // will be toggled on tick
 }
 
-func (f *fetcher) addSprite(ppu *PPU, s *spriteData) {
+func (f *fetcher) addSprite(ppu *PPU, s *spriteData, offset byte) {
 	f.sprite = s
 	f.spriteLine = ppu.ly + 16 - s.y
+	f.spriteOffset = offset
+	f.state = fsReadSpriteTileID
+	f.skipTick = true // will be toggled on tick
+}
+
+func (f *fetcher) isFetchingSprite() bool {
+	return f.state >= fsReadSpriteTileID && f.state <= fsPushSprite
 }
 
 func (f *fetcher) fetch(mapAddress uint16, tileAddress uint16, xOffset uint16, signedIDs bool, tileLine byte) {
@@ -62,15 +75,12 @@ func (f *fetcher) fetch(mapAddress uint16, tileAddress uint16, xOffset uint16, s
 	f.fifo.clear()
 
 	f.state = fsReadTileID
-	f.tileID = 0
-	f.tileData1 = 0
-	f.tileData2 = 0
 	f.skipTick = true // will be toggled on tick
 }
 
 func (f *fetcher) tick(ppu *PPU) {
 	if f.disabled && f.state == fsReadTileID {
-		if f.fifo.len() <= 8 {
+		if f.fifo.len <= 8 {
 			f.fifo.enqueue(emptyLine)
 		}
 		return
@@ -86,16 +96,16 @@ func (f *fetcher) tick(ppu *PPU) {
 		f.tileID = ppu.vram.Read(f.mapAddress + f.xOffset)
 		f.state = fsReadData1
 	case fsReadData1:
-		f.tileData1 = f.getTileData(ppu, f.tileID, f.tileLine, 0, f.tileAddress, f.signedIDs, false, 8)
+		f.tileData1 = f.getTileData(ppu, f.tileLine, 0, f.tileAddress, f.signedIDs, false, 8)
 		f.state = fsReadData2
 		break
 
 	case fsReadData2:
-		f.tileData2 = f.getTileData(ppu, f.tileID, f.tileLine, 1, f.tileAddress, f.signedIDs, false, 8)
+		f.tileData2 = f.getTileData(ppu, f.tileLine, 1, f.tileAddress, f.signedIDs, false, 8)
 		f.state = fsPush
 
 	case fsPush:
-		if f.fifo.len() <= 8 {
+		if f.fifo.len <= 8 {
 			f.fillPixBuffer(false, false, psBG)
 			f.fifo.enqueue(f.pixBuffer)
 			f.xOffset = (f.xOffset + 1) % 0x20
@@ -112,7 +122,7 @@ func (f *fetcher) tick(ppu *PPU) {
 			f.tileID &= 0xFE
 			h = 16
 		}
-		f.tileData1 = f.getTileData(ppu, f.tileID, f.spriteLine, 0, 0x8000, false, f.sprite.flipV(), h)
+		f.tileData1 = f.getTileData(ppu, f.spriteLine, 0, 0x8000, false, f.sprite.flipV(), h)
 		f.state = fsReadSpriteData2
 		break
 
@@ -122,7 +132,7 @@ func (f *fetcher) tick(ppu *PPU) {
 			f.tileID &= 0xFE
 			h = 16
 		}
-		f.tileData2 = f.getTileData(ppu, f.tileID, f.spriteLine, 1, 0x8000, false, f.sprite.flipV(), h)
+		f.tileData2 = f.getTileData(ppu, f.spriteLine, 1, 0x8000, false, f.sprite.flipV(), h)
 		f.state = fsPushSprite
 		break
 
@@ -133,48 +143,46 @@ func (f *fetcher) tick(ppu *PPU) {
 		}
 
 		f.fillPixBuffer(f.sprite.flipH(), f.sprite.priority(), p)
-		f.fifo.setOverlay(f.pixBuffer, spriteOffset, spriteAttributes, spriteOamIndex)
+		f.fifo.setOverlay(f.pixBuffer, int(f.spriteOffset))
 		f.state = fsReadTileID
 		break
 	}
 }
 
-func (f *fetcher) getTileData(ppu *PPU, tileID byte, line byte, byteNumber byte, tileDataAddress uint16, signed bool, flipV bool, tileHeight byte) byte {
+func (f *fetcher) getTileData(ppu *PPU, line byte, byteNumber byte, tileDataAddress uint16, signed bool, flipV bool, tileHeight byte) byte {
 	if flipV {
 		line = tileHeight - 1 - line
 	}
 
 	var tileAddress uint16
 	if signed {
-		signedID := sint8(tileID)
-		tileAddress = tileDataAddress + signedID*0x10
+		signedID := int8(f.tileID)
+		tileAddress = uint16(int(tileDataAddress) + int(signedID)*0x10)
 	} else {
-		tileAddress = tileDataAddress + tileID*0x10
+		tileAddress = tileDataAddress + uint16(f.tileID)*0x10
 	}
-	return ppu.vram.Read(tileAddress + effectiveLine*2 + byteNumber)
+	return ppu.vram.Read(tileAddress + uint16(line*2+byteNumber))
 }
 
 func (f *fetcher) fillPixBuffer(flipX bool, priority bool, src paletteSrc) {
-	ifBitThen = func(src byte, bit byte, hiVal byte, loVal byte) byte {
-		if (src >> bit) != 0 {
+	ifBitThen := func(src byte, bit byte, hiVal byte, loVal byte) byte {
+		if ((src >> bit) & 1) != 0 {
 			return hiVal
 		}
 		return loVal
 	}
 
 	for i := 7; i >= 0; i-- {
-		mask := byte(1 << i)
-		p := ifBitThen(f.tileData2, i, 2, 0) | ifBitThen(f.tileData1, i, 1, 0)
+		p := ifBitThen(f.tileData2, byte(i), 2, 0) | ifBitThen(f.tileData1, byte(i), 1, 0)
 		if priority {
 			p |= 0x80
 		}
 		p |= (byte(src) << 4)
 
 		if flipX {
-			pixelLine[i] = p
+			f.pixBuffer[i] = p
 		} else {
-			pixelLine[7-i] = p
+			f.pixBuffer[7-i] = p
 		}
 	}
-	return pixelLine
 }

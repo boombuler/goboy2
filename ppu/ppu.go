@@ -20,10 +20,11 @@ const (
 )
 
 type PPU struct {
-	mmu             mmu.MMU
-	phaseIdx        int
-	phases          []ppuPhase
-	lastPhaseResult interface{}
+	mmu            mmu.MMU
+	phaseIdx       int
+	phases         []ppuPhase
+	visibleSprites []*spriteData
+	ticksInLine    uint16
 
 	lcdc      byte
 	ie        lcdInterrupts
@@ -37,10 +38,17 @@ type PPU struct {
 	obj0      palette
 	obj1      palette
 	screenOut chan<- *image.RGBA
+	curScreen *image.RGBA
 
 	vram vRAM
 	oam  oam
 }
+
+// DisplayWidth is the width of the output pictures
+const DisplayWidth int = 160
+
+// DisplayHeight is the height of the output pictures
+const DisplayHeight int = 144
 
 // New creates a new ppu and connects it to the given mmu
 func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
@@ -53,6 +61,8 @@ func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
 		phases: []ppuPhase{
 			new(oamSearch),
 			newPixelTransfer(),
+			new(hblank),
+			new(vblank),
 		},
 	}
 	mmu.ConnectPPU(ppu)
@@ -118,6 +128,11 @@ func (p *PPU) Write(addr uint16, val byte) {
 		if newEnabled := p.lcdEnabled(); oldEnabled != newEnabled {
 			if !newEnabled {
 				p.screenOut <- emptyScreen
+			} else {
+				p.setLy(0)
+				p.phaseIdx = 0
+				p.phases[0].start(p)
+				p.curScreen = newScreen()
 			}
 		}
 	case addrSTAT:
@@ -196,4 +211,50 @@ func (p *PPU) wndTileMapDisplayAddr() uint16 {
 
 func (p *PPU) lcdEnabled() bool {
 	return p.lcdc&0x80 != 0
+}
+
+// Step the PPU for one M-Cycle
+func (p *PPU) Step() {
+	if !p.lcdEnabled() {
+		return
+	}
+
+	// ppu runs at 4 times the speed of the cpu
+	for i := 0; i < 4; i++ {
+		p.stepOne()
+	}
+}
+
+func (p *PPU) requstLcdcInterrupt(i lcdInterrupts) {
+	if (p.ie & i) == i {
+		p.mmu.RequestInterrupt(mmu.IRQLCDStat)
+	}
+}
+
+func (p *PPU) setLy(v byte) {
+	p.ly = v
+	p.ticksInLine = 0
+	if p.ly == p.lyc {
+		p.requstLcdcInterrupt(liCoincidence)
+	}
+}
+
+func (p *PPU) stepOne() {
+	p.ticksInLine++
+	if !p.phases[p.phaseIdx].step(p) {
+		if p.ticksInLine == 4 && p.state() == sVBlank && p.ly == 153 {
+			p.setLy(0)
+		}
+	} else {
+		for {
+			if p.phaseIdx++; p.phaseIdx == len(p.phases) {
+				p.setLy(p.ly + 1)
+				p.phaseIdx = 0
+			}
+			if p.phases[p.phaseIdx].start(p) {
+				break
+			}
+		}
+	}
+
 }

@@ -99,8 +99,8 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 					screen.input <- KeyEvent{true, e.Keysym.Sym}
 				}
 			default:
-				drawImageOnRenderer(texture, dx, dy, renderer)
-				time.Sleep(3 * time.Millisecond)
+				//drawImageOnRenderer(texture, dx, dy, renderer)
+				time.Sleep(1 * time.Millisecond)
 			}
 		}
 	}

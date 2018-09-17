@@ -68,7 +68,7 @@ func main() {
 	}
 
 	screen.Main(func(s *screen.Screen, input <-chan interface{}, exitChan <-chan struct{}) {
-		gb := NewGameBoy(c)
+		gb := NewGameBoy(c, s.GetOutputChannel())
 		go func() {
 			for {
 				select {
@@ -87,6 +87,6 @@ func main() {
 			gb.SetupNoBootRom()
 		}
 		gb.CPU.Dump = *dump
-		gb.Run(exitChan, s.GetOutputChannel())
+		gb.Run(exitChan)
 	})
 }

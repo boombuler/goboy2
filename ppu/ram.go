@@ -24,7 +24,7 @@ func (vr vRAM) Write(addr uint16, val byte) {
 }
 
 func newOAM() oam {
-	return make(oam, 0x00A0)
+	return make(oam, 40)
 }
 
 func (sr oam) Read(addr uint16) byte {

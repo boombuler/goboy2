@@ -2,8 +2,8 @@ package ppu
 
 type ppuPhase interface {
 	state() ppuState
-	step(ppu *PPU) interface{}
-	start(ppu *PPU)
+	step(ppu *PPU) bool
+	start(ppu *PPU) bool
 }
 
 type ppuState byte

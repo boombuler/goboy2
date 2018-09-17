@@ -4,9 +4,9 @@ import (
 	"goboy2/apu"
 	"goboy2/cartridge"
 	"goboy2/cpu"
-	"goboy2/gpu"
 	"goboy2/input"
 	"goboy2/mmu"
+	"goboy2/ppu"
 	"goboy2/timer"
 	"image"
 	"time"
@@ -15,19 +15,19 @@ import (
 type GameBoy struct {
 	MMU   mmu.MMU
 	CPU   *cpu.CPU
-	gpu   *gpu.GPU
+	ppu   *ppu.PPU
 	apu   *apu.APU
 	timer *timer.Timer
 	kb    *input.Keyboard
 }
 
 // NewGameBoy creates a new gameboy for the given cartridge
-func NewGameBoy(c *cartridge.Cartridge) *GameBoy {
+func NewGameBoy(c *cartridge.Cartridge, screen chan<- *image.RGBA) *GameBoy {
 	gb := new(GameBoy)
 	gb.MMU = mmu.New()
 	gb.apu = apu.New(gb.MMU)
 	gb.CPU = cpu.New(gb.MMU)
-	gb.gpu = gpu.New(gb.MMU)
+	gb.ppu = ppu.New(gb.MMU, screen)
 	gb.timer = timer.New(gb.MMU)
 	gb.kb = input.NewKeyboard(gb.MMU)
 	gb.MMU.LoadCartridge(c)
@@ -37,7 +37,7 @@ func NewGameBoy(c *cartridge.Cartridge) *GameBoy {
 const frameduration = (time.Second / 4194304) * 70224
 
 // Run starts the emulation until the exit chan is closed.
-func (gb *GameBoy) Run(exitChan <-chan struct{}, screen chan<- *image.RGBA) {
+func (gb *GameBoy) Run(exitChan <-chan struct{}) {
 	if err := gb.apu.Start(); err != nil {
 		panic(err)
 	}
@@ -52,10 +52,7 @@ func (gb *GameBoy) Run(exitChan <-chan struct{}, screen chan<- *image.RGBA) {
 			gb.MMU.Step()
 			gb.timer.Step()
 			gb.apu.Step()
-
-			if img := gb.gpu.Step(4); img != nil {
-				screen <- img
-			}
+			gb.ppu.Step()
 		}
 	}
 }
