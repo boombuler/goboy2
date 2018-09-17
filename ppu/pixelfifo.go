@@ -27,6 +27,10 @@ func (fifo *pixelFiFo) len() int {
 	return 0
 }
 
+func (fifo *pixelFiFo) enqueue(pixData []byte) {
+
+}
+
 func (fifo *pixelFiFo) dequeue(ppu *PPU) color.Color {
 	var src paletteSrc
 	var pix byte
