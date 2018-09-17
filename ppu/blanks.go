@@ -21,7 +21,7 @@ func (hb *hblank) start(ppu *PPU) bool {
 	}
 	hb.ticks = ppu.ticksInLine
 	ppu.requstLcdcInterrupt(liHBlank)
-	return false
+	return true
 }
 
 type vblank struct {
