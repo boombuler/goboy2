@@ -8,6 +8,8 @@ type oamSearch struct {
 	spriteIdx int
 }
 
+const visibleSpriteDataCount = 10
+
 func (os *oamSearch) start(ppu *PPU) bool {
 	if int(ppu.ly) >= DisplayHeight {
 		return false
@@ -18,9 +20,9 @@ func (os *oamSearch) start(ppu *PPU) bool {
 	os.resIdx = 0
 	os.spriteIdx = 0
 	if ppu.visibleSprites == nil {
-		ppu.visibleSprites = make([]*spriteData, 10)
+		ppu.visibleSprites = make([]*spriteData, visibleSpriteDataCount)
 	} else {
-		for i := 0; i < 10; i++ {
+		for i := 0; i < visibleSpriteDataCount; i++ {
 			ppu.visibleSprites[i] = nil
 		}
 	}
@@ -39,12 +41,8 @@ func (os *oamSearch) step(ppu *PPU) bool {
 	} else {
 		if os.resIdx < len(ppu.visibleSprites) {
 			os.spriteX = ppu.oam[os.spriteIdx].x
-			var spriteHeight byte = 8
-			if ppu.largeSprites() {
-				spriteHeight = 16
-			}
 
-			if yTest := ppu.ly + 0x10; os.spriteY <= yTest && yTest < os.spriteY+spriteHeight {
+			if yTest := ppu.ly + 0x10; os.spriteY <= yTest && yTest < os.spriteY+ppu.spriteHeight() {
 				ppu.visibleSprites[os.resIdx] = &ppu.oam[os.spriteIdx]
 				os.resIdx++
 			}
@@ -53,7 +51,7 @@ func (os *oamSearch) step(ppu *PPU) bool {
 		os.spriteIdx++
 		os.readY = true
 	}
-	if os.spriteIdx >= 40 {
+	if os.spriteIdx >= len(ppu.oam) {
 		return true
 	}
 	return false

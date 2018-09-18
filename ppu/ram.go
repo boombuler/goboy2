@@ -58,8 +58,11 @@ func (sr oam) Write(addr uint16, val byte) {
 	}
 }
 
-func (sp spriteData) palette() int {
-	return int((sp.flags & 0x10) >> 4)
+func (sp spriteData) palette() paletteSrc {
+	if int((sp.flags&0x10)>>4) == 0 {
+		return psObj0
+	}
+	return psObj1
 }
 func (sp spriteData) flipH() bool {
 	return (sp.flags & 0x20) != 0

@@ -84,7 +84,7 @@ func (p *PPU) Read(addr uint16) byte {
 		if p.ly == p.lyc {
 			coincidence = 1
 		}
-		return (byte(p.ie) << 3) | (coincidence << 2) | (byte(p.state()) & 0x03)
+		return byte(p.ie) | (coincidence << 2) | (byte(p.state()) & 0x03)
 	case addrSCROLLY:
 		return p.scrollY
 	case addrSCROLLX:
@@ -136,7 +136,7 @@ func (p *PPU) Write(addr uint16, val byte) {
 			}
 		}
 	case addrSTAT:
-		p.ie = lcdInterrupts((val >> 3) & 0x0F)
+		p.ie = lcdInterrupts(val) & liALL
 	case addrSCROLLY:
 		p.scrollY = val
 	case addrSCROLLX:
@@ -177,8 +177,11 @@ func (p *PPU) useObjects() bool {
 	return p.lcdc&0x02 != 0
 }
 
-func (p *PPU) largeSprites() bool {
-	return p.lcdc&0x04 != 0
+func (p *PPU) spriteHeight() byte {
+	if p.lcdc&0x04 != 0 {
+		return 16
+	}
+	return 8
 }
 
 func (p *PPU) bgTileDisplayAddr() uint16 {

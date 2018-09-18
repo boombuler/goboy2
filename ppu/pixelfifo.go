@@ -13,8 +13,9 @@ const (
 )
 
 type pixelFiFo struct {
-	buffer []byte
-	len    int
+	buffer   []byte
+	len      int
+	startIdx int
 }
 
 func newPixelFiFo() *pixelFiFo {
@@ -27,37 +28,46 @@ func (fifo *pixelFiFo) clear() {
 	fifo.len = 0
 }
 
+func (fifo *pixelFiFo) idx(i int) int {
+	return (i + fifo.startIdx) % len(fifo.buffer)
+}
+
 func (fifo *pixelFiFo) enqueue(pixData []byte) {
 	for i, d := range pixData {
-		fifo.buffer[i+fifo.len] = d
+		fifo.buffer[fifo.idx(i+fifo.len)] = d
 	}
 	fifo.len += len(pixData)
+}
+
+func colIdx(pixel byte) byte {
+	return pixel & 0x03
+}
+func prio(pixel byte) bool {
+	return pixel&0x80 != 0
 }
 
 func (fifo *pixelFiFo) setOverlay(pixData []byte, offset int) {
 	for j := offset; j < len(pixData); j++ {
 		p := pixData[j]
 		i := j - offset
-
-		if (fifo.buffer[i] & 0x80) != 0 {
+		bi := fifo.idx(i)
+		if prio(fifo.buffer[bi]) {
 			continue
 		}
-		priority := (p & 0x80) != 0
-		if (priority && ((fifo.buffer[i] & 0x03) == 0)) || (!priority && (p&0x03) != 0) {
-			fifo.buffer[i] = p
+		priority := prio(p)
+		if (priority && (colIdx(fifo.buffer[bi]) == 0)) || (!priority && (colIdx(p) != 0)) {
+			fifo.buffer[bi] = p
 		}
 	}
 }
 
 func (fifo *pixelFiFo) dequeue(ppu *PPU) color.Color {
-	b := fifo.buffer[0]
-	for i := 1; i < fifo.len; i++ {
-		fifo.buffer[i-1] = fifo.buffer[i]
-	}
+	b := fifo.buffer[fifo.idx(0)]
+	fifo.startIdx = (fifo.startIdx + 1) % len(fifo.buffer)
 	fifo.len--
 
 	src := paletteSrc((b >> 4) & 0x07)
-	pix := b & 0x03
+	pix := colIdx(b)
 
 	palette := ppu.bgPal
 	switch src {

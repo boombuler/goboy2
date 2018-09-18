@@ -1,5 +1,16 @@
 package ppu
 
+type lcdInterrupts byte
+
+const (
+	liHBlank lcdInterrupts = 1 << (3 + iota)
+	liVBlank
+	liOAM
+	liCoincidence
+
+	liALL = liHBlank | liVBlank | liOAM | liCoincidence
+)
+
 type ppuPhase interface {
 	state() ppuState
 	step(ppu *PPU) bool

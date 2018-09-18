@@ -28,7 +28,7 @@ func (pt *pixelTransfer) step(ppu *PPU) bool {
 			return false
 		}
 		if pt.dropped < int(ppu.scrollX%8) {
-			pt.fifo.dequeue(ppu) // drop pixel
+			pt.fifo.dequeue(ppu)
 			pt.dropped++
 			return false
 		}
@@ -46,25 +46,17 @@ func (pt *pixelTransfer) step(ppu *PPU) bool {
 		if pt.fetcher.isFetchingSprite() {
 			return false
 		}
-		spriteAdded := false
 		for i, s := range ppu.visibleSprites {
 			if s == nil {
 				continue
 			}
 			if pt.curX == 0 && s.x < 8 {
-				if !spriteAdded {
-					pt.fetcher.addSprite(ppu, s, 8-s.x)
-					spriteAdded = true
-				}
+				pt.fetcher.fetchSprite(ppu, s, 8-s.x)
 				ppu.visibleSprites[i] = nil
+				return false
 			} else if s.x-8 == pt.curX {
-				if !spriteAdded {
-					pt.fetcher.addSprite(ppu, s, 0)
-					spriteAdded = true
-				}
+				pt.fetcher.fetchSprite(ppu, s, 0)
 				ppu.visibleSprites[i] = nil
-			}
-			if spriteAdded {
 				return false
 			}
 		}
