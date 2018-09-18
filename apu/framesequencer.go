@@ -30,7 +30,7 @@ func (fs *frameSequencer) step() sequencerStep {
 	fs.counter--
 
 	stepNo := byte(0xFF)
-	if fs.counter == 0 {
+	if fs.counter <= 0 {
 		stepNo = fs.curStep
 		fs.curStep = (stepNo + 1) % 8
 		fs.counter = frameSequencerTicks
