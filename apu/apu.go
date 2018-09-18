@@ -71,7 +71,7 @@ type APU struct {
 // New creates a new gameboy APU
 func New(mmu mmu.MMU) *APU {
 	apu := &APU{
-		masterVolume: 0, //.3,
+		masterVolume: 0.3,
 		mmu:          mmu,
 		m:            new(sync.Mutex),
 		soundBuffer:  make([]float32, 0),
