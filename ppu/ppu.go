@@ -249,9 +249,12 @@ func (p *PPU) stepOne() {
 			p.setLy(0)
 		}
 	} else {
+		incLy := p.ly != 0 || p.state() != sVBlank
 		for {
 			if p.phaseIdx++; p.phaseIdx == len(p.phases) {
-				p.setLy(p.ly + 1)
+				if incLy {
+					p.setLy(p.ly + 1)
+				}
 				p.phaseIdx = 0
 			}
 			if p.phases[p.phaseIdx].start(p) {
