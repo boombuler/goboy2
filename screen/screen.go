@@ -32,7 +32,7 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 		render: make(chan *image.RGBA, 10),
 		input:  make(chan interface{}),
 	}
-	wnd, err := sdl.CreateWindow("hallo",
+	wnd, err := sdl.CreateWindow("GoBoy2",
 		sdl.WINDOWPOS_UNDEFINED,
 		sdl.WINDOWPOS_UNDEFINED,
 		winWidth*initialScale,
@@ -71,7 +71,7 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 					if ok {
 						img = nextImg
 					} else {
-						break
+						break clearBuff
 					}
 				default:
 					break clearBuff
@@ -80,9 +80,14 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 
 			if img != nil {
 				b := img.Bounds()
-				renderer.SetLogicalSize(int32(b.Max.X-b.Min.X), int32(b.Max.Y-b.Min.Y))
+				renderer.SetLogicalSize(int32(b.Dx()), int32(b.Dy()))
+				texture, dx, dy = imgToTex(img, renderer)
+			} else {
+				texture = nil
+				dx = 0
+				dy = 0
 			}
-			texture, dx, dy = imgToTex(img, renderer)
+
 			drawImageOnRenderer(texture, dx, dy, renderer)
 		default:
 			switch ev := sdl.PollEvent(); e := ev.(type) {
