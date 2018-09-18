@@ -27,7 +27,7 @@ func (pt *pixelTransfer) step(ppu *PPU) bool {
 		if pt.fifo.len <= 8 {
 			return false
 		}
-		if pt.dropped < int(ppu.scrollX&8) {
+		if pt.dropped < int(ppu.scrollX%8) {
 			pt.fifo.dequeue(ppu) // drop pixel
 			pt.dropped++
 			return false
