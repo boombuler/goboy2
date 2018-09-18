@@ -27,7 +27,7 @@ func (po *pipedOpcode) Exec(cpu *CPU, state *ocState) {
 	}
 
 	po.sub.Exec(cpu, state)
-	po.sub = po.sub.Next(state)
+	po.sub = cpu.nextOpCode(po.sub, state)
 	if po.sub == nil {
 		po.seek(po.idx + 1)
 	}

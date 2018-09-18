@@ -6,14 +6,14 @@ import (
 	"goboy2/screen"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 )
 
 func showUsage() {
 	log.Println("Usage:")
-	log.Println(path.Base(os.Args[0]), "(romfile)")
+	log.Println(filepath.Base(os.Args[0]), "(romfile)")
 	os.Exit(1)
 }
 
@@ -35,6 +35,7 @@ var (
 	noboot     = flag.Bool("noboot", false, "skip boot sequence")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 	memprofile = flag.String("memprofile", "", "write memory profile to `file`")
+	mooneye    = flag.Bool("mooneye", false, "runs a mooneye test-rom")
 )
 
 func main() {
@@ -65,6 +66,11 @@ func main() {
 	c, err := loadCatridge()
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if *mooneye {
+		runMooneyeRom(c)
+		return
 	}
 
 	screen.Main(func(s *screen.Screen, input <-chan interface{}, exitChan <-chan struct{}) {

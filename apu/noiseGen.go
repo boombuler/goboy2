@@ -42,6 +42,10 @@ func (ng *noiseGen) Reset() {
 	ng.divisor = 0
 }
 
+func (ng *noiseGen) Active() bool {
+	return !ng.useLength || ng.length > 0
+}
+
 func (ng *noiseGen) Step(frameStep sequencerStep) {
 	if (frameStep&ssLength == ssLength) && ng.useLength {
 		ng.length--
@@ -52,7 +56,7 @@ func (ng *noiseGen) Step(frameStep sequencerStep) {
 
 	ng.timerCnt--
 
-	if ng.timerCnt <= 0 {
+	if ng.timerCnt <= 0 && ng.Active() {
 		ng.timerCnt = int(divisors[ng.divisor]) << ng.clockShift
 
 		result := (ng.lfsr & 0x1) ^ ((ng.lfsr >> 1) & 0x1)
@@ -69,7 +73,7 @@ func (ng *noiseGen) Step(frameStep sequencerStep) {
 func (ng *noiseGen) Read(addr uint16) byte {
 	switch addr {
 	case addrNR41:
-		return ng.lengthLoad
+		return ng.lengthLoad | 0xC0
 	case addrNR42:
 		return ng.ve.Read()
 	case addrNR43:
@@ -83,7 +87,7 @@ func (ng *noiseGen) Read(addr uint16) byte {
 		if ng.useLength {
 			useLen = 1
 		}
-		return (useLen << 6)
+		return (useLen << 6) | 0x3F
 	default:
 		return 0
 	}

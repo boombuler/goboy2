@@ -84,7 +84,7 @@ func (p *PPU) Read(addr uint16) byte {
 		if p.ly == p.lyc {
 			coincidence = 1
 		}
-		return byte(p.ie) | (coincidence << 2) | (byte(p.state()) & 0x03)
+		return byte(p.ie) | (coincidence << 2) | (byte(p.state()) & 0x03) | 0x80
 	case addrSCROLLY:
 		return p.scrollY
 	case addrSCROLLX:

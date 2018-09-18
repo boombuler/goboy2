@@ -29,7 +29,10 @@ const AddrBootmodeFlag = 0xFF50
 type bootMode byte
 
 func (bm *bootMode) Read(addr uint16) byte {
-	return byte(*bm)
+	if byte(*bm) == 0x00 {
+		return 0x00
+	}
+	return 0xFF
 }
 func (bm *bootMode) Write(addr uint16, value byte) {
 	if *bm == 0x00 {
@@ -104,9 +107,9 @@ func (m *mmuImpl) Read(addr uint16) byte {
 		if d := m.ioDevices[addr&0xFF]; d != nil {
 			return d.Read(addr)
 		}
-		return 0x00
+		return 0xFF
 	default:
-		return 0x00
+		return 0xFF
 	}
 }
 

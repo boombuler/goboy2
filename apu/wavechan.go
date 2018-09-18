@@ -58,7 +58,7 @@ func (wc *waveChannel) Step(frameStep sequencerStep) {
 		wc.reloadTimer()
 
 		if wc.active {
-			if !wc.useLength || wc.length > 0 {
+			if wc.Active() {
 				wc.pos = (wc.pos + 1) & 0x1F
 				idx := wc.pos / 2
 				outByte := wc.waveRAM[idx]
@@ -73,6 +73,10 @@ func (wc *waveChannel) Step(frameStep sequencerStep) {
 			wc.sample = 0
 		}
 	}
+}
+
+func (wc *waveChannel) Active() bool {
+	return !wc.useLength || wc.length > 0
 }
 
 func (wc *waveChannel) volumeShift() byte {
@@ -90,13 +94,13 @@ func (wc *waveChannel) Read(addr uint16) byte {
 	switch addr {
 	case addrNR30:
 		if wc.active {
-			return 0x80
+			return 0xFF
 		}
-		return 0x00
+		return 0x7F
 	case addrNR31:
 		return wc.lengthLoad
 	case addrNR32:
-		return wc.volume << 5
+		return wc.volume<<5 | 0x9F
 	case addrNR33:
 		return byte(wc.timerLoad)
 	case addrNR34:

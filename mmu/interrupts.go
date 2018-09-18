@@ -24,7 +24,7 @@ func (h *irqHandler) Read(addr uint16) byte {
 	case AddrIRQEnabled:
 		return byte(h.mask)
 	case AddrIRQFlags:
-		return byte(h.flag)
+		return byte(h.flag) | 0xE0
 	default:
 		return 0
 	}
@@ -34,7 +34,7 @@ func (h *irqHandler) Write(addr uint16, value byte) {
 	case AddrIRQEnabled:
 		h.mask = IRQ(value)
 	case AddrIRQFlags:
-		h.flag = IRQ(value)
+		h.flag = IRQ(value & 0x1F)
 	default:
 		return
 	}

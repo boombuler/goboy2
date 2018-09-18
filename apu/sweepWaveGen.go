@@ -59,7 +59,7 @@ func (s *sweepSquareWaveGen) sweepShift() byte {
 
 func (s *sweepSquareWaveGen) Read(addr uint16) byte {
 	if addr == addrNR10 {
-		return s.sweepCtrl
+		return s.sweepCtrl | 0x80
 	}
 	return s.squareWaveGen.Read(addr)
 }

@@ -61,9 +61,11 @@ func (kb *Keyboard) Read(addr uint16) byte {
 
 		switch kb.colSelect {
 		case col1:
-			return kb.keyState[1]
+			return kb.keyState[1] | 0xC0
 		case col2:
-			return kb.keyState[0]
+			return kb.keyState[0] | 0xC0
+		default:
+			return kb.keyState[0] | kb.keyState[1] | 0xC0
 		}
 	}
 	return 0x00

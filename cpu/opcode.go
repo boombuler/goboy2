@@ -6,6 +6,19 @@ type opCode interface {
 	TakesCycle() bool
 }
 
+type namedOpCode interface {
+	Name() string
+}
+
+type named struct {
+	name string
+	opCode
+}
+
+func (n named) Name() string {
+	return n.name
+}
+
 type ocState struct {
 	buf []byte
 }

@@ -19,6 +19,21 @@ func (cpu *CPU) SetRegisterValues(pc, sp uint16, a, b, c, d, e, f, h, l byte) {
 	cpu.l = l
 }
 
+// GetRegisterValues returns the current register values
+func (cpu *CPU) GetRegisterValues() (pc, sp uint16, a, b, c, d, e, f, h, l byte) {
+	pc = cpu.pc
+	sp = cpu.sp
+	a = cpu.a
+	b = cpu.b
+	c = cpu.c
+	d = cpu.d
+	e = cpu.e
+	f = byte(cpu.f)
+	h = cpu.h
+	l = cpu.l
+	return
+}
+
 // CPU is the central processing unit of the gameboy which will consume and execute the program code
 type CPU struct {
 	mmu mmu.MMU
@@ -32,6 +47,8 @@ type CPU struct {
 	curOpCode   opCode
 	opCodeState *ocState
 	rootOC      opCode
+
+	OnExecOpCode func(opCode string)
 
 	Dump bool
 }
@@ -57,10 +74,20 @@ func (cpu *CPU) hasFlag(f flag) bool {
 	return cpu.f&f == f
 }
 
+func (cpu *CPU) nextOpCode(oc opCode, state *ocState) opCode {
+	oc = oc.Next(state)
+	if fn := cpu.OnExecOpCode; fn != nil {
+		if info, ok := oc.(namedOpCode); ok {
+			fn(info.Name())
+		}
+	}
+	return oc
+}
+
 func (cpu *CPU) execInstantCodes(oc opCode) opCode {
 	for oc != nil && !oc.TakesCycle() {
 		oc.Exec(cpu, cpu.opCodeState)
-		oc = oc.Next(cpu.opCodeState)
+		oc = cpu.nextOpCode(oc, cpu.opCodeState)
 	}
 	return oc
 }
@@ -69,7 +96,7 @@ func (cpu *CPU) stepOpCode() {
 	oc := cpu.curOpCode
 
 	oc.Exec(cpu, cpu.opCodeState)
-	oc = oc.Next(cpu.opCodeState)
+	oc = cpu.nextOpCode(oc, cpu.opCodeState)
 	cpu.curOpCode = cpu.execInstantCodes(oc)
 }
 

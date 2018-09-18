@@ -51,6 +51,7 @@ const (
 // APU implements a gameboy audio processing unit
 type APU struct {
 	mmu          mmu.MMU
+	TestMode     bool
 	masterVolume float32
 	soundBuffer  []float32
 	m            *sync.Mutex
@@ -70,7 +71,7 @@ type APU struct {
 // New creates a new gameboy APU
 func New(mmu mmu.MMU) *APU {
 	apu := &APU{
-		masterVolume: 0.3,
+		masterVolume: 0, //.3,
 		mmu:          mmu,
 		m:            new(sync.Mutex),
 		soundBuffer:  make([]float32, 0),
@@ -101,6 +102,7 @@ type soundChannel interface {
 	CurrentSample() float32
 	Step(s sequencerStep)
 	Reset()
+	Active() bool
 }
 
 func (apu *APU) reset() {
@@ -122,10 +124,16 @@ func (apu *APU) Read(addr uint16) byte {
 	case addrNR51:
 		return apu.channelSelect
 	case addrNR52:
+		result := byte(0x70)
 		if apu.active {
-			return 0x8F // todo...
+			result |= 0x80
 		}
-		return 0x00
+		for i, ch := range apu.generators {
+			if ch.Active() {
+				result |= (1 << byte(i))
+			}
+		}
+		return result
 	default:
 		return 0
 	}
@@ -200,7 +208,7 @@ func (apu *APU) Step() {
 		sampleCount := len(apu.soundBuffer)
 		apu.m.Unlock()
 
-		if sampleCount > sampleBufferLength*channelCount*2 {
+		if (sampleCount > sampleBufferLength*channelCount*2) && !apu.TestMode {
 			sleepTime := sampleDuration * sampleBufferLength
 			time.Sleep(sleepTime)
 		}
@@ -208,7 +216,7 @@ func (apu *APU) Step() {
 }
 
 func (apu *APU) getVolume(ch audioChannel, sc int) float32 {
-	if !apu.active {
+	if !apu.active || apu.TestMode {
 		return 0
 	}
 	var soShift uint

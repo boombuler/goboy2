@@ -58,7 +58,7 @@ func (s *squareWaveGen) Step(frameStep sequencerStep) {
 		s.reloadTimer()
 		s.dutyIdx = (s.dutyIdx + 1) % 8
 
-		if !s.useLength || s.lengthCounter > 0 {
+		if s.Active() {
 			if s.duty()&byte(1<<s.dutyIdx) == 0 {
 				s.hi = false
 			} else {
@@ -66,6 +66,10 @@ func (s *squareWaveGen) Step(frameStep sequencerStep) {
 			}
 		}
 	}
+}
+
+func (s *squareWaveGen) Active() bool {
+	return !s.useLength || s.lengthCounter > 0
 }
 
 func (s *squareWaveGen) CurrentSample() float32 {

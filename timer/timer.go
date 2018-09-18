@@ -103,7 +103,7 @@ func (t *Timer) Read(addr uint16) byte {
 	case AddrModulo:
 		return t.tma
 	case AddrCtrl:
-		return t.tac
+		return t.tac | 0xF8
 	}
 	return 0x00
 }
@@ -122,7 +122,7 @@ func (t *Timer) Write(addr uint16, value byte) {
 		t.tma = value
 	case AddrCtrl:
 		oldHi := t.hi()
-		t.tac = value
+		t.tac = value & 0x07
 		if oldHi && !t.hi() { // Check falling edge
 			t.incTIMA()
 		}
