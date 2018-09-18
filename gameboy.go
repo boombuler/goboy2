@@ -7,18 +7,20 @@ import (
 	"goboy2/input"
 	"goboy2/mmu"
 	"goboy2/ppu"
+	"goboy2/serial"
 	"goboy2/timer"
 	"image"
 	"time"
 )
 
 type GameBoy struct {
-	MMU   mmu.MMU
-	CPU   *cpu.CPU
-	ppu   *ppu.PPU
-	apu   *apu.APU
-	timer *timer.Timer
-	kb    *input.Keyboard
+	MMU    mmu.MMU
+	CPU    *cpu.CPU
+	ppu    *ppu.PPU
+	apu    *apu.APU
+	timer  *timer.Timer
+	kb     *input.Keyboard
+	serial *serial.Serial
 }
 
 // NewGameBoy creates a new gameboy for the given cartridge
@@ -29,6 +31,7 @@ func NewGameBoy(c *cartridge.Cartridge, screen chan<- *image.RGBA) *GameBoy {
 	gb.CPU = cpu.New(gb.MMU)
 	gb.ppu = ppu.New(gb.MMU, screen)
 	gb.timer = timer.New(gb.MMU)
+	gb.serial = serial.New(gb.MMU)
 	gb.kb = input.NewKeyboard(gb.MMU)
 	gb.MMU.LoadCartridge(c)
 	return gb
@@ -51,6 +54,7 @@ func (gb *GameBoy) Run(exitChan <-chan struct{}) {
 			gb.CPU.Step()
 			gb.MMU.Step()
 			gb.timer.Step()
+			gb.serial.Step()
 			gb.apu.Step()
 			gb.ppu.Step()
 		}
