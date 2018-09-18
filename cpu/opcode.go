@@ -6,16 +6,16 @@ type opCode interface {
 	TakesCycle() bool
 }
 
-type namedOpCode interface {
-	Name() string
+type labeledOpCode interface {
+	Label() string
 }
 
-type named struct {
+type labeled struct {
 	name string
 	opCode
 }
 
-func (n named) Name() string {
+func (n labeled) Name() string {
 	return n.name
 }
 

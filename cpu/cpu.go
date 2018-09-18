@@ -77,8 +77,8 @@ func (cpu *CPU) hasFlag(f flag) bool {
 func (cpu *CPU) nextOpCode(oc opCode, state *ocState) opCode {
 	oc = oc.Next(state)
 	if fn := cpu.OnExecOpCode; fn != nil {
-		if info, ok := oc.(namedOpCode); ok {
-			fn(info.Name())
+		if info, ok := oc.(labeledOpCode); ok {
+			fn(info.Label())
 		}
 	}
 	return oc
