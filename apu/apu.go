@@ -192,14 +192,14 @@ func (apu *APU) Step() {
 	}
 
 	genCount := float32(len(apu.generators))
-	apu.sampleLeft = mix(apu.sampleLeft, (sampleLeft/genCount)*apu.masterVolume)
-	apu.sampleRight = mix(apu.sampleRight, (sampleLeft/genCount)*apu.masterVolume)
+	apu.sampleLeft = mix(apu.sampleLeft, (sampleLeft / genCount))
+	apu.sampleRight = mix(apu.sampleRight, (sampleLeft / genCount))
 
 	if apu.sampleT >= sampleDuration {
 		apu.sampleT -= sampleDuration
 
-		sampleLeft = apu.sampleLeft
-		sampleRight = apu.sampleRight
+		sampleLeft = apu.sampleLeft * apu.masterVolume
+		sampleRight = apu.sampleRight * apu.masterVolume
 		apu.sampleLeft = 0
 		apu.sampleRight = 0
 
