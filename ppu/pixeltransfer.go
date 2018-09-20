@@ -23,10 +23,12 @@ func (pt *pixelTransfer) state() ppuState {
 
 func (pt *pixelTransfer) step(ppu *PPU) bool {
 	pt.fetcher.tick(ppu)
+
+	if pt.fifo.len <= 8 {
+		return false
+	}
+
 	if ppu.useWndAndBg() {
-		if pt.fifo.len <= 8 {
-			return false
-		}
 		if pt.dropped < int(ppu.scrollX%8) {
 			pt.fifo.dequeue(ppu)
 			pt.dropped++
