@@ -48,7 +48,7 @@ func (s *squareWaveGen) Step(frameStep sequencerStep) {
 		s.ve.Step()
 	}
 
-	if frameStep&ssLength == ssLength && s.useLength {
+	if frameStep&ssLength == ssLength && s.useLength && s.lengthCounter > 0 {
 		s.lengthCounter--
 	}
 

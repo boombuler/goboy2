@@ -48,7 +48,7 @@ func (wc *waveChannel) CurrentSample() float32 {
 	return wc.sample
 }
 func (wc *waveChannel) Step(frameStep sequencerStep) {
-	if (frameStep&ssLength == ssLength) && wc.useLength {
+	if (frameStep&ssLength == ssLength) && wc.useLength && wc.length > 0 {
 		wc.length--
 	}
 

@@ -47,7 +47,7 @@ func (ng *noiseGen) Active() bool {
 }
 
 func (ng *noiseGen) Step(frameStep sequencerStep) {
-	if (frameStep&ssLength == ssLength) && ng.useLength {
+	if (frameStep&ssLength == ssLength) && ng.useLength && ng.length > 0 {
 		ng.length--
 	}
 	if frameStep&ssVolume == ssVolume {
