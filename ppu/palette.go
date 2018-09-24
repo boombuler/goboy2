@@ -1,7 +1,6 @@
 package ppu
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"sync"
@@ -20,7 +19,6 @@ var emptyScreen = newScreen()
 
 var screenPool = &sync.Pool{
 	New: func() interface{} {
-		fmt.Println("creating screen")
 		return image.NewRGBA(image.Rect(0, 0, DisplayWidth, DisplayHeight))
 	},
 }
