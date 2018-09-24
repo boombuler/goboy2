@@ -65,6 +65,10 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 		case _, _ = <-screen.stop:
 			return
 		case img := <-screen.render:
+			if texture != nil {
+				texture.Destroy()
+			}
+
 			if img != nil {
 				b := img.Bounds()
 				renderer.SetLogicalSize(int32(b.Dx()), int32(b.Dy()))
