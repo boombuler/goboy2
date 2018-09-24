@@ -51,7 +51,7 @@ func (fifo *pixelFiFo) setOverlay(pixData []byte, offset int) {
 		p := pixData[j]
 		i := j - offset
 		bi := fifo.idx(i)
-		if prio(fifo.buffer[bi]) {
+		if ps := paletteSrc((fifo.buffer[bi] >> 4) & 0x07); ps != psBG {
 			continue
 		}
 		priority := prio(p)
