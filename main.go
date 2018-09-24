@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"runtime/pprof"
 )
 
@@ -34,24 +33,12 @@ var (
 	dump       = flag.Bool("dump", false, "dump cpu state after every instruction")
 	noboot     = flag.Bool("noboot", false, "skip boot sequence")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
-	memprofile = flag.String("memprofile", "", "write memory profile to `file`")
 	mooneye    = flag.Bool("mooneye", false, "runs a mooneye test-rom")
 )
 
 func main() {
 	flag.Parse()
 
-	if *memprofile != "" {
-		f, err := os.Create(*memprofile)
-		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
-		}
-		runtime.GC() // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal("could not write memory profile: ", err)
-		}
-		f.Close()
-	}
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {

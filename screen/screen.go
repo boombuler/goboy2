@@ -1,6 +1,7 @@
 package screen
 
 import (
+	"goboy2/ppu"
 	"image"
 	"log"
 	"runtime"
@@ -29,7 +30,7 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	screen := &Screen{
 		stop:   make(chan struct{}),
-		render: make(chan *image.RGBA, 10),
+		render: make(chan *image.RGBA),
 		input:  make(chan interface{}),
 	}
 	wnd, err := sdl.CreateWindow("GoBoy2",
@@ -64,24 +65,11 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 		case _, _ = <-screen.stop:
 			return
 		case img := <-screen.render:
-		clearBuff:
-			for {
-				select {
-				case nextImg, ok := <-screen.render:
-					if ok {
-						img = nextImg
-					} else {
-						break clearBuff
-					}
-				default:
-					break clearBuff
-				}
-			}
-
 			if img != nil {
 				b := img.Bounds()
 				renderer.SetLogicalSize(int32(b.Dx()), int32(b.Dy()))
 				texture, dx, dy = imgToTex(img, renderer)
+				ppu.FreeScreen(img)
 			} else {
 				texture = nil
 				dx = 0

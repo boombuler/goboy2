@@ -1,8 +1,10 @@
 package ppu
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+	"sync"
 )
 
 type palette byte
@@ -16,8 +18,37 @@ var gbColors = []color.Color{
 
 var emptyScreen = newScreen()
 
+var screenPool = &sync.Pool{
+	New: func() interface{} {
+		fmt.Println("creating screen")
+		return image.NewRGBA(image.Rect(0, 0, DisplayWidth, DisplayHeight))
+	},
+}
+
+func FreeScreen(img *image.RGBA) {
+	screenPool.Put(img)
+}
+
+func dropFrames(output chan<- *image.RGBA) chan<- *image.RGBA {
+	input := make(chan *image.RGBA)
+
+	go func() {
+		lastImg := <-input
+		for {
+			select {
+			case img := <-input:
+				FreeScreen(lastImg)
+				lastImg = img
+			case output <- lastImg:
+			}
+		}
+	}()
+
+	return input
+}
+
 func newScreen() *image.RGBA {
-	return image.NewRGBA(image.Rect(0, 0, DisplayWidth, DisplayHeight))
+	return screenPool.Get().(*image.RGBA)
 }
 
 func (p palette) toColor(val byte) color.Color {
