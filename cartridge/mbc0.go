@@ -2,31 +2,29 @@ package cartridge
 
 import (
 	"fmt"
-	"io"
 )
 
 type mbc0 struct {
-	rom             []rombank
-	ram             rambank
-	hasRam, battery bool
+	rom     []rombank
+	ram     rambank
+	hasRam  bool
+	battery Battery
 }
 
-func createMBC0(c *Cartridge, data []byte, hasRam, hasBat bool) (MBC, error) {
+func createMBC0(c *Cartridge, data []byte, hasRam bool, bat Battery) (MBC, error) {
 	if len(data) < 0x8000 {
 		return nil, fmt.Errorf("Invalid ROM size: %v", len(data))
 	}
-	return &mbc0{
+	m := &mbc0{
 		rom: []rombank{
 			data[:rombankSize],
 			data[rombankSize : rombankSize*2],
 		},
 		hasRam:  hasRam,
-		battery: hasBat,
-	}, nil
-}
-
-func (m *mbc0) HasBattery() bool {
-	return m.battery
+		battery: bat,
+	}
+	m.loadRAM()
+	return m, nil
 }
 
 func (m *mbc0) Read(addr uint16) byte {
@@ -42,13 +40,23 @@ func (m *mbc0) Write(addr uint16, value byte) {
 		m.ram[addr-0xA000] = value
 	}
 }
-func (m *mbc0) DumpRAM(w io.Writer) {
-	if m.battery && m.hasRam {
-		w.Write(m.ram[:])
+
+func (m *mbc0) saveRAM() {
+	if m.battery != nil && m.hasRam {
+		f := m.battery.Open()
+		f.Write(m.ram[:])
+		f.Close()
 	}
 }
-func (m *mbc0) LoadRAM(r io.Reader) {
-	if m.battery && m.hasRam {
+
+func (m *mbc0) Shutdown() {
+	m.saveRAM()
+}
+
+func (m *mbc0) loadRAM() {
+	if m.battery != nil && m.hasRam && m.battery.HasData() {
+		r := m.battery.Open()
 		r.Read(m.ram[:])
+		r.Close()
 	}
 }

@@ -1,11 +1,7 @@
 package cartridge
 
-import (
-	"io"
-)
-
 type mbc1 struct {
-	battery   bool
+	battery   Battery
 	rombanks  []rombank
 	activerom int
 
@@ -15,9 +11,9 @@ type mbc1 struct {
 	ramEnabled bool
 }
 
-func createMBC1(c *Cartridge, data []byte, hasBattery bool) (MBC, error) {
+func createMBC1(c *Cartridge, data []byte, bat Battery) (MBC, error) {
 	m := new(mbc1)
-	m.battery = hasBattery
+	m.battery = bat
 	for rs := c.ROMSize; rs > 0; rs -= rombankSize {
 		m.rombanks = append(m.rombanks, rombank(data[c.ROMSize-rs:c.ROMSize-rs+rombankSize]))
 	}
@@ -32,11 +28,8 @@ func createMBC1(c *Cartridge, data []byte, hasBattery bool) (MBC, error) {
 	m.activeram = 0
 	m.ramEnabled = false
 	m.ramMode = false
+	m.loadRAM()
 	return m, nil
-}
-
-func (m *mbc1) HasBattery() bool {
-	return m.battery
 }
 
 func (m *mbc1) hasRam() bool {
@@ -63,6 +56,9 @@ func (m *mbc1) Write(addr uint16, value byte) {
 	switch {
 	case addr >= 0x0000 && addr <= 0x1FFF:
 		m.ramEnabled = value&0x0F == 0x0A
+		if !m.ramEnabled {
+			m.saveRAM()
+		}
 	case addr >= 0x2000 && addr <= 0x3FFF:
 		m.activerom = (m.activerom & 0x60) | int(value&0x1F)
 	case addr >= 0x4000 && addr <= 0x5FFF:
@@ -105,17 +101,25 @@ func (m *mbc1) getRAMBank() int {
 	return 0
 }
 
-func (m *mbc1) DumpRAM(w io.Writer) {
-	if m.battery && m.hasRam() {
-		for _, rb := range m.rambanks {
-			w.Write(rb[:])
+func (m *mbc1) Shutdown() {
+	m.saveRAM()
+}
+
+func (m *mbc1) saveRAM() {
+	if m.battery != nil && m.hasRam() {
+		w := m.battery.Open()
+		for i := 0; i < len(m.rambanks); i++ {
+			w.Write(m.rambanks[i][:])
 		}
+		w.Close()
 	}
 }
-func (m *mbc1) LoadRAM(r io.Reader) {
-	if m.battery && m.hasRam() {
-		for _, rb := range m.rambanks {
-			r.Read(rb[:])
+func (m *mbc1) loadRAM() {
+	if m.battery != nil && m.battery.HasData() && m.hasRam() {
+		r := m.battery.Open()
+		for i := 0; i < len(m.rambanks); i++ {
+			r.Read(m.rambanks[i][:])
 		}
+		r.Close()
 	}
 }

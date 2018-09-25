@@ -1,11 +1,7 @@
 package cartridge
 
-import (
-	"io"
-)
-
 type mbc3 struct {
-	battery    bool
+	battery    Battery
 	rombanks   []rombank
 	activerom  int
 	rambanks   []rambank
@@ -14,9 +10,9 @@ type mbc3 struct {
 	rtc        *rtc
 }
 
-func createMBC3(c *Cartridge, data []byte, hasTimer, hasBattery bool) (MBC, error) {
+func createMBC3(c *Cartridge, data []byte, hasTimer bool, bat Battery) (MBC, error) {
 	m := new(mbc3)
-	m.battery = hasBattery
+	m.battery = bat
 	for rs := c.ROMSize; rs > 0; rs -= rombankSize {
 		m.rombanks = append(m.rombanks, rombank(data[c.ROMSize-rs:c.ROMSize-rs+rombankSize]))
 	}
@@ -27,11 +23,8 @@ func createMBC3(c *Cartridge, data []byte, hasTimer, hasBattery bool) (MBC, erro
 	if hasTimer {
 		m.rtc = newRealTimeClock()
 	}
+	m.loadRAM()
 	return m, nil
-}
-
-func (m *mbc3) HasBattery() bool {
-	return m.battery
 }
 
 func (m *mbc3) hasRam() bool {
@@ -68,6 +61,9 @@ func (m *mbc3) Write(addr uint16, value byte) {
 		}
 	} else if addr >= 0x0000 && addr <= 0x1FFF {
 		m.ramEnabled = value&0x0F == 0x0A
+		if !m.ramEnabled {
+			m.saveRAM()
+		}
 	} else if addr >= 0x2000 && addr <= 0x3FFF {
 		m.activerom = int(value & 0x7F)
 		if m.activerom == 0x00 {
@@ -84,27 +80,34 @@ func (m *mbc3) Write(addr uint16, value byte) {
 	}
 }
 
-func (m *mbc3) DumpRAM(w io.Writer) {
-	if m.battery {
+func (m *mbc3) Shutdown() {
+	m.saveRAM()
+}
+func (m *mbc3) saveRAM() {
+	if m.battery != nil && (m.hasRam() || m.rtc != nil) {
+		w := m.battery.Open()
 		if m.hasRam() {
-			for _, rb := range m.rambanks {
-				w.Write(rb[:])
+			for i := 0; i < len(m.rambanks); i++ {
+				w.Write(m.rambanks[i][:])
 			}
 		}
 		if m.rtc != nil {
 			m.rtc.Dump(w)
 		}
+		w.Close()
 	}
 }
-func (m *mbc3) LoadRAM(r io.Reader) {
-	if m.battery {
+func (m *mbc3) loadRAM() {
+	if m.battery != nil && m.battery.HasData() && (m.hasRam() || m.rtc != nil) {
+		r := m.battery.Open()
 		if m.hasRam() {
-			for _, rb := range m.rambanks {
-				r.Read(rb[:])
+			for i := 0; i < len(m.rambanks); i++ {
+				r.Read(m.rambanks[i][:])
 			}
 		}
 		if m.rtc != nil {
 			m.rtc.Load(r)
 		}
+		r.Close()
 	}
 }

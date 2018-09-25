@@ -10,9 +10,7 @@ import (
 type MBC interface {
 	Read(addr uint16) byte
 	Write(addr uint16, value byte)
-	HasBattery() bool
-	DumpRAM(w io.Writer)
-	LoadRAM(r io.Reader)
+	Shutdown()
 }
 
 type Cartridge struct {
@@ -25,61 +23,61 @@ type Cartridge struct {
 	Version  byte
 }
 
-var mbcFactories = map[byte]func(c *Cartridge, data []byte) (MBC, error){
-	0x00: func(c *Cartridge, data []byte) (MBC, error) {
+var mbcFactories = map[byte]func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error){
+	0x00: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// ROM Only
-		return createMBC0(c, data, false, false)
+		return createMBC0(c, data, false, nil)
 	},
-	0x01: func(c *Cartridge, data []byte) (MBC, error) {
+	0x01: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC1
-		return createMBC1(c, data, false)
+		return createMBC1(c, data, nil)
 	},
-	0x02: func(c *Cartridge, data []byte) (MBC, error) {
+	0x02: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC1+RAM
-		return createMBC1(c, data, false)
+		return createMBC1(c, data, nil)
 	},
-	0x03: func(c *Cartridge, data []byte) (MBC, error) {
+	0x03: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC1+RAM+BAT
-		return createMBC1(c, data, true)
+		return createMBC1(c, data, bf())
 	},
-	0x05: func(c *Cartridge, data []byte) (MBC, error) {
+	0x05: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC2
-		return createMBC2(c, data, false)
+		return createMBC2(c, data, nil)
 	},
-	0x06: func(c *Cartridge, data []byte) (MBC, error) {
+	0x06: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC2+BAT
-		return createMBC2(c, data, true)
+		return createMBC2(c, data, bf())
 	},
-	0x08: func(c *Cartridge, data []byte) (MBC, error) {
+	0x08: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// ROM+RAM
-		return createMBC0(c, data, true, false)
+		return createMBC0(c, data, true, nil)
 	},
-	0x09: func(c *Cartridge, data []byte) (MBC, error) {
+	0x09: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// ROM+RAM+BAT
-		return createMBC0(c, data, true, true)
+		return createMBC0(c, data, true, bf())
 	},
 	// 0x0B MMM01
 	// 0x0C MMM01+RAM
 	// 0x0D MMM01+RAM+BAT
-	0x0F: func(c *Cartridge, data []byte) (MBC, error) {
+	0x0F: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC3+Timer+BAT
-		return createMBC3(c, data, true, true)
+		return createMBC3(c, data, true, bf())
 	},
-	0x10: func(c *Cartridge, data []byte) (MBC, error) {
+	0x10: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC3+Timer+RAM+BAT
-		return createMBC3(c, data, true, true)
+		return createMBC3(c, data, true, bf())
 	},
-	0x11: func(c *Cartridge, data []byte) (MBC, error) {
+	0x11: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC3
-		return createMBC3(c, data, false, false)
+		return createMBC3(c, data, false, nil)
 	},
-	0x12: func(c *Cartridge, data []byte) (MBC, error) {
+	0x12: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC3+RAM
-		return createMBC3(c, data, false, false)
+		return createMBC3(c, data, false, nil)
 	},
-	0x13: func(c *Cartridge, data []byte) (MBC, error) {
+	0x13: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
 		// MBC3+RAM+BAT
-		return createMBC3(c, data, false, true)
+		return createMBC3(c, data, false, bf())
 	},
 	// 0x15 MBC4
 	// 0x16 MBC4+RAM
@@ -96,7 +94,7 @@ var mbcFactories = map[byte]func(c *Cartridge, data []byte) (MBC, error){
 	// 0xFF HuC1+RAM+BAT
 }
 
-func Load(reader io.Reader) (*Cartridge, error) {
+func Load(reader io.Reader, bf BatteryFactory) (*Cartridge, error) {
 	rom, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return nil, err
@@ -130,7 +128,7 @@ func Load(reader io.Reader) (*Cartridge, error) {
 	if !ok {
 		return nil, fmt.Errorf("MBC type not supported: %v", rom[0x0147])
 	} else {
-		c.MBC, err = mbcFactory(c, rom)
+		c.MBC, err = mbcFactory(c, rom, bf)
 		if err != nil {
 			return nil, err
 		}

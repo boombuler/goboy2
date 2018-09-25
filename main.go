@@ -26,14 +26,11 @@ func loadCatridge() (*cartridge.Cartridge, error) {
 	}
 	defer f.Close()
 
-	return cartridge.Load(f)
-}
+	bf := func() cartridge.Battery {
+		return cartridge.GetBattery(flag.Arg(0))
+	}
 
-func ramFileName() string {
-	romFile := flag.Arg(0)
-	ext := filepath.Ext(romFile)
-	baseFileName := romFile[:len(romFile)-len(ext)]
-	return baseFileName + ".ram"
+	return cartridge.Load(f, bf)
 }
 
 var (
@@ -62,17 +59,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ramFileName := ramFileName()
-	if c.HasBattery() {
-		if _, err := os.Stat(ramFileName); !os.IsNotExist(err) {
-			ramFile, err := os.Open(ramFileName)
-			if err == nil {
-				c.LoadRAM(ramFile)
-				ramFile.Close()
-			}
-		}
-	}
-
 	if *mooneye {
 		runMooneyeRom(c)
 		return
@@ -84,13 +70,7 @@ func main() {
 			for {
 				select {
 				case _, _ = <-exitChan:
-					if c.HasBattery() {
-						ramFile, err := os.Create(ramFileName)
-						if err == nil {
-							c.DumpRAM(ramFile)
-							ramFile.Close()
-						}
-					}
+					c.Shutdown()
 					return
 				case ev := <-input:
 					switch e := ev.(type) {
