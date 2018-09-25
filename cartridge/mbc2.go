@@ -27,6 +27,10 @@ func createMBC2(c *Cartridge, data []byte, hasBat bool) (MBC, error) {
 	return m, nil
 }
 
+func (m *mbc2) HasBattery() bool {
+	return m.battery
+}
+
 func (m *mbc2) Read(addr uint16) byte {
 	if addr < rombankSize {
 		return m.rombanks[0].Read(addr)

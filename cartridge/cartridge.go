@@ -10,6 +10,7 @@ import (
 type MBC interface {
 	Read(addr uint16) byte
 	Write(addr uint16, value byte)
+	HasBattery() bool
 	DumpRAM(w io.Writer)
 	LoadRAM(r io.Reader)
 }

@@ -30,6 +30,10 @@ func createMBC3(c *Cartridge, data []byte, hasTimer, hasBattery bool) (MBC, erro
 	return m, nil
 }
 
+func (m *mbc3) HasBattery() bool {
+	return m.battery
+}
+
 func (m *mbc3) hasRam() bool {
 	return len(m.rambanks) > 0
 }

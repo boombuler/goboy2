@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
-
-	"github.com/veandco/go-sdl2/sdl"
 )
 
 func showUsage() {
@@ -29,6 +27,13 @@ func loadCatridge() (*cartridge.Cartridge, error) {
 	defer f.Close()
 
 	return cartridge.Load(f)
+}
+
+func ramFileName() string {
+	romFile := flag.Arg(0)
+	ext := filepath.Ext(romFile)
+	baseFileName := romFile[:len(romFile)-len(ext)]
+	return baseFileName + ".ram"
 }
 
 var (
@@ -57,6 +62,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	ramFileName := ramFileName()
+	if c.HasBattery() {
+		if _, err := os.Stat(ramFileName); !os.IsNotExist(err) {
+			ramFile, err := os.Open(ramFileName)
+			if err == nil {
+				c.LoadRAM(ramFile)
+				ramFile.Close()
+			}
+		}
+	}
+
 	if *mooneye {
 		runMooneyeRom(c)
 		return
@@ -68,18 +84,17 @@ func main() {
 			for {
 				select {
 				case _, _ = <-exitChan:
+					if c.HasBattery() {
+						ramFile, err := os.Create(ramFileName)
+						if err == nil {
+							c.DumpRAM(ramFile)
+							ramFile.Close()
+						}
+					}
 					return
 				case ev := <-input:
 					switch e := ev.(type) {
 					case screen.KeyEvent:
-						if e.Key == sdl.K_v && e.Pressed {
-							f, err := os.Create("C:\\Temp\\vram.mem")
-							if err == nil {
-								gb.ppu.Dump(f)
-								f.Close()
-							}
-						}
-
 						gb.kb.HandleKeyEvent(e.Pressed, e.Key)
 					}
 				}
