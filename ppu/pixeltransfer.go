@@ -48,30 +48,22 @@ func (pt *pixelTransfer) step(ppu *PPU) bool {
 		if pt.fetcher.isFetchingSprite() {
 			return false
 		}
-		oneFetched := false
 		for i, s := range ppu.visibleSprites {
 			if s == nil {
 				continue
 			}
 			if pt.curX == 0 && s.x < 8 {
-				if !oneFetched {
-					pt.fetcher.fetchSprite(ppu, s, 8-s.x)
-					oneFetched = true
-				}
+				pt.fetcher.fetchSprite(ppu, s, 8-s.x)
 				ppu.visibleSprites[i] = nil
+				return false
 
 			} else if s.x-8 == pt.curX {
-				if !oneFetched {
-					pt.fetcher.fetchSprite(ppu, s, 0)
-					oneFetched = true
-				}
+				pt.fetcher.fetchSprite(ppu, s, 0)
 				ppu.visibleSprites[i] = nil
-
+				return false
 			}
 		}
-		if oneFetched {
-			return false
-		}
+
 	}
 
 	color := pt.fifo.dequeue(ppu)
