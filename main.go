@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 func showUsage() {
@@ -70,6 +72,14 @@ func main() {
 				case ev := <-input:
 					switch e := ev.(type) {
 					case screen.KeyEvent:
+						if e.Key == sdl.K_v && e.Pressed {
+							f, err := os.Create("C:\\Temp\\vram.mem")
+							if err == nil {
+								gb.ppu.Dump(f)
+								f.Close()
+							}
+						}
+
 						gb.kb.HandleKeyEvent(e.Pressed, e.Key)
 					}
 				}

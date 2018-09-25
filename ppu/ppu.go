@@ -3,6 +3,7 @@ package ppu
 import (
 	"goboy2/mmu"
 	"image"
+	"io"
 )
 
 const (
@@ -49,6 +50,39 @@ const DisplayWidth int = 160
 
 // DisplayHeight is the height of the output pictures
 const DisplayHeight int = 144
+
+func (p *PPU) Dump(w io.Writer) {
+	w.Write([]byte{p.lcdc, p.scrollY, p.scrollX, byte(p.bgPal), byte(p.obj0), byte(p.obj1), p.winY, p.winX})
+
+	w.Write(p.vram)
+
+	oam := make([]byte, 0xA0)
+	for addr := 0xFE00; addr <= 0xFE9F; addr++ {
+		oam[addr-0xFE00] = p.oam.Read(uint16(addr))
+	}
+	w.Write(oam)
+}
+
+func (p *PPU) LoadDump(r io.Reader) {
+	buf := make([]byte, 8)
+	r.Read(buf)
+	p.lcdc = buf[0]
+	p.scrollY = buf[1]
+	p.scrollX = buf[2]
+	p.bgPal = palette(buf[3])
+	p.obj0 = palette(buf[4])
+	p.obj1 = palette(buf[5])
+	p.winY = buf[6]
+	p.winX = buf[7]
+	p.curScreen = newScreen()
+
+	r.Read(p.vram)
+	oam := make([]byte, 0xA0)
+	r.Read(oam)
+	for addr := 0xFE00; addr <= 0xFE9F; addr++ {
+		p.oam.Write(uint16(addr), oam[addr-0xFE00])
+	}
+}
 
 // New creates a new ppu and connects it to the given mmu
 func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
