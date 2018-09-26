@@ -90,10 +90,10 @@ func (m *mmuImpl) Read(addr uint16) byte {
 	// [0000-3FFF] Cartridge ROM, bank 0
 	case addr >= 0x0000 && addr <= 0x3FFF:
 		if m.Read(consts.AddrBootmodeFlag) == 0x00 {
-			if m.gbc && addr < uint16(len(GBC_BOOTROM)) {
+			// if in gbc mode and reading Cartridge header then read from card...
+			if m.gbc && addr < uint16(len(GBC_BOOTROM)) && (addr < 0x0100 || addr > 0x014F) {
 				return GBC_BOOTROM[addr]
-			}
-			if !m.gbc && addr < uint16(len(BOOTROM)) {
+			} else if !m.gbc && addr < uint16(len(BOOTROM)) {
 				return BOOTROM[addr]
 			}
 		}

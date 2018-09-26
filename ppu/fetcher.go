@@ -93,7 +93,11 @@ func (f *fetcher) tick(ppu *PPU) {
 	switch f.state {
 	case fsReadTileID:
 		f.tileID = ppu.vram0.Read(f.mapAddress + f.xOffset)
-		f.tileAttr = ppu.vram1.Read(f.mapAddress + f.xOffset)
+		if ppu.mmu.GBC() {
+			f.tileAttr = ppu.vram1.Read(f.mapAddress + f.xOffset)
+		} else {
+			f.tileAttr = 0
+		}
 		f.state = fsReadData1
 	case fsReadData1:
 		flipV := f.tileAttr&(1<<6) != 0

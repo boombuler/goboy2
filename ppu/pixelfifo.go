@@ -61,7 +61,9 @@ func (fifo *pixelFiFo) setOverlay(pixData []byte, offset int) {
 		if !useBGPal(fifo.buffer[bi]) {
 			continue
 		}
-		priority := prio(p)
+		bgPrio := useBGPal(fifo.buffer[bi]) && prio(fifo.buffer[bi])
+
+		priority := prio(p) || bgPrio
 		if (priority && (colIdx(fifo.buffer[bi]) == 0)) || (!priority && (colIdx(p) != 0)) {
 			fifo.buffer[bi] = p
 		}
