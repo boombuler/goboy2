@@ -1,6 +1,7 @@
 package screen
 
 import (
+	"goboy2/consts"
 	"goboy2/ppu"
 	"image"
 	"log"
@@ -11,7 +12,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-const winWidth, winHeight int32 = 160, 144
+const winWidth, winHeight int32 = int32(consts.DisplayWidth), int32(consts.DisplayHeight)
 const initialScale int32 = 1
 
 type KeyEvent struct {

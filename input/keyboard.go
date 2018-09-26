@@ -1,13 +1,12 @@
 package input
 
 import (
+	"goboy2/consts"
 	"goboy2/mmu"
 	"sync"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
-
-const AddrInput uint16 = 0xFF00
 
 type KeyMap struct {
 	Up     sdl.Keycode
@@ -45,7 +44,7 @@ func NewKeyboard(m mmu.MMU) *Keyboard {
 	kb.lock = new(sync.Mutex)
 	kb.keyMap = DefaultKeymap
 	kb.keyState[0], kb.keyState[1] = 0x0F, 0x0F
-	m.AddIODevice(kb, AddrInput)
+	m.AddIODevice(kb, consts.AddrInput)
 	return kb
 }
 
@@ -55,7 +54,7 @@ const (
 )
 
 func (kb *Keyboard) Read(addr uint16) byte {
-	if addr == AddrInput {
+	if addr == consts.AddrInput {
 		kb.lock.Lock()
 		defer kb.lock.Unlock()
 
@@ -71,7 +70,7 @@ func (kb *Keyboard) Read(addr uint16) byte {
 	return 0x00
 }
 func (kb *Keyboard) Write(addr uint16, value byte) {
-	if addr == AddrInput {
+	if addr == consts.AddrInput {
 		kb.colSelect = value & 0x30
 	}
 }

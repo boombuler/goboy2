@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"fmt"
+	"goboy2/consts"
 	"goboy2/mmu"
 )
 
@@ -123,7 +124,7 @@ func (cpu *CPU) Step() {
 		}
 		cpu.setOPCode(cpu.rootOC)
 	} else {
-		curIRQFlags := mmu.IRQ(cpu.mmu.Read(mmu.AddrIRQEnabled)) & mmu.IRQ(cpu.mmu.Read(mmu.AddrIRQFlags))
+		curIRQFlags := mmu.IRQ(cpu.mmu.Read(consts.AddrIRQEnabled)) & mmu.IRQ(cpu.mmu.Read(consts.AddrIRQFlags))
 		if (curIRQFlags & mmu.IRQAll) != mmu.IRQNone {
 			cpu.haltEnabled = false
 		}
@@ -132,7 +133,7 @@ func (cpu *CPU) Step() {
 
 func (cpu *CPU) handleInterrupts() bool {
 	if cpu.ime {
-		curIRQFlags := mmu.IRQ(cpu.mmu.Read(mmu.AddrIRQEnabled)) & mmu.IRQ(cpu.mmu.Read(mmu.AddrIRQFlags))
+		curIRQFlags := mmu.IRQ(cpu.mmu.Read(consts.AddrIRQEnabled)) & mmu.IRQ(cpu.mmu.Read(consts.AddrIRQFlags))
 		if (curIRQFlags & mmu.IRQAll) != mmu.IRQNone {
 			cpu.setOPCode(irqHandlerOpCode)
 			return true

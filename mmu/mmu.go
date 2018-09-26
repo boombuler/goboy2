@@ -1,5 +1,7 @@
 package mmu
 
+import "goboy2/consts"
+
 type MMU interface {
 	IODevice
 	RequestInterrupt(i IRQ)
@@ -8,13 +10,15 @@ type MMU interface {
 	LoadCartridge(cartridge IODevice)
 	AddIODevice(d IODevice, addrs ...uint16)
 	Step()
+	GBC() bool
 }
 
 type mmuImpl struct {
+	gbc       bool
 	ioDevices []IODevice
 	cartridge IODevice
 	ppu       IODevice
-	ram       [2 * 4096]byte
+	ram       IODevice
 	zpram     [127]byte
 	dma       *dmaTransfer
 }
@@ -23,8 +27,6 @@ type IODevice interface {
 	Read(addr uint16) byte
 	Write(addr uint16, value byte)
 }
-
-const AddrBootmodeFlag = 0xFF50
 
 type bootMode byte
 
@@ -40,15 +42,21 @@ func (bm *bootMode) Write(addr uint16, value byte) {
 	}
 }
 
-func New() MMU {
+func New(gbc bool) MMU {
 	res := &mmuImpl{
+		gbc:       gbc,
 		ioDevices: make([]IODevice, 256),
+		ram:       new(workingRAM),
 	}
 	res.dma = &dmaTransfer{mmu: res}
-	res.AddIODevice(new(irqHandler), AddrIRQFlags, AddrIRQEnabled)
-	res.AddIODevice(new(bootMode), AddrBootmodeFlag)
-	res.AddIODevice(res.dma, AddrDMATransfer)
+	res.AddIODevice(new(irqHandler), consts.AddrIRQFlags, consts.AddrIRQEnabled)
+	res.AddIODevice(new(bootMode), consts.AddrBootmodeFlag)
+	res.AddIODevice(res.dma, consts.AddrDMATransfer)
 	return res
+}
+
+func (m *mmuImpl) GBC() bool {
+	return m.gbc
 }
 
 func (m *mmuImpl) Step() {
@@ -80,7 +88,7 @@ func (m *mmuImpl) Read(addr uint16) byte {
 	switch {
 	// [0000-3FFF] Cartridge ROM, bank 0
 	case addr >= 0x0000 && addr <= 0x3FFF:
-		if addr <= 0x00FF && m.Read(AddrBootmodeFlag) == 0x00 {
+		if addr <= 0x00FF && m.Read(consts.AddrBootmodeFlag) == 0x00 {
 			return BOOTROM[addr]
 		}
 		return m.cartridge.Read(addr)
@@ -93,12 +101,9 @@ func (m *mmuImpl) Read(addr uint16) byte {
 	// [A000-BFFF] Cartridge (External) RAM
 	case addr >= 0xA000 && addr <= 0xBFFF:
 		return m.cartridge.Read(addr)
-	// [C000-DFFF] Working RAM
-	case addr >= 0xC000 && addr <= 0xDFFF:
-		return m.ram[addr-0xC000]
-	// [E000-FDFF] Working RAM (shadow)
-	case addr >= 0xE000 && addr <= 0xFDFF:
-		return m.ram[addr-0xE000]
+	// [C000-FDFF] Working RAM
+	case addr >= 0xC000 && addr <= 0xFDFF:
+		return m.ram.Read(addr)
 	// [FE00-FE9F] Graphics: sprite information
 	case addr >= 0xFE00 && addr <= 0xFE9F:
 		return m.ppu.Read(addr)
@@ -119,7 +124,7 @@ func (m *mmuImpl) Write(addr uint16, value byte) {
 		m.zpram[addr-0xFF80] = value
 		return
 	} else if m.dma.blockMemoryAccess(addr) {
-		if addr == AddrDMATransfer {
+		if addr == consts.AddrDMATransfer {
 			m.dma.Write(addr, value)
 		}
 		return
@@ -135,12 +140,9 @@ func (m *mmuImpl) Write(addr uint16, value byte) {
 	// [A000-BFFF] Cartridge (External) RAM
 	case addr >= 0xA000 && addr <= 0xBFFF:
 		m.cartridge.Write(addr, value)
-	// [C000-DFFF] Working RAM
-	case addr >= 0xC000 && addr <= 0xDFFF:
-		m.ram[addr-0xC000] = value
-	// [E000-FDFF] Working RAM (shadow)
-	case addr >= 0xE000 && addr <= 0xFDFF:
-		m.ram[addr-0xE000] = value
+	// [C000-FDFF] Working RAM
+	case addr >= 0xC000 && addr <= 0xFDFF:
+		m.ram.Write(addr, value)
 	// [FE00-FE9F] Graphics: sprite information
 	case addr >= 0xFE00 && addr <= 0xFE9F:
 		m.ppu.Write(addr, value)
@@ -153,15 +155,15 @@ func (m *mmuImpl) Write(addr uint16, value byte) {
 }
 
 func (m *mmuImpl) RequestInterrupt(i IRQ) {
-	m.Write(AddrIRQFlags, m.Read(AddrIRQFlags)|byte(i))
+	m.Write(consts.AddrIRQFlags, m.Read(consts.AddrIRQFlags)|byte(i))
 }
 
 func (m *mmuImpl) GetCurrentIterrupt() IRQ {
-	i := IRQ(m.Read(AddrIRQEnabled) & m.Read(AddrIRQFlags))
+	i := IRQ(m.Read(consts.AddrIRQEnabled) & m.Read(consts.AddrIRQFlags))
 	handle := func(test IRQ) bool {
 		if i&test == test {
-			f := IRQ(m.Read(AddrIRQFlags))
-			m.Write(AddrIRQFlags, byte(f&(0xFF^test)))
+			f := IRQ(m.Read(consts.AddrIRQFlags))
+			m.Write(consts.AddrIRQFlags, byte(f&(0xFF^test)))
 			return true
 		}
 		return false

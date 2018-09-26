@@ -3,6 +3,7 @@ package main
 import (
 	"goboy2/apu"
 	"goboy2/cartridge"
+	"goboy2/consts"
 	"goboy2/cpu"
 	"goboy2/input"
 	"goboy2/mmu"
@@ -10,7 +11,6 @@ import (
 	"goboy2/serial"
 	"goboy2/timer"
 	"image"
-	"time"
 )
 
 type GameBoy struct {
@@ -26,7 +26,7 @@ type GameBoy struct {
 // NewGameBoy creates a new gameboy for the given cartridge
 func NewGameBoy(c *cartridge.Cartridge, screen chan<- *image.RGBA) *GameBoy {
 	gb := new(GameBoy)
-	gb.MMU = mmu.New()
+	gb.MMU = mmu.New(c.GBC)
 	gb.apu = apu.New(gb.MMU)
 	gb.CPU = cpu.New(gb.MMU)
 	gb.ppu = ppu.New(gb.MMU, screen)
@@ -36,8 +36,6 @@ func NewGameBoy(c *cartridge.Cartridge, screen chan<- *image.RGBA) *GameBoy {
 	gb.MMU.LoadCartridge(c)
 	return gb
 }
-
-const frameduration = (time.Second / 4194304) * 70224
 
 // Run starts the emulation until the exit chan is closed.
 func (gb *GameBoy) Run(exitChan <-chan struct{}) {
@@ -63,7 +61,7 @@ func (gb *GameBoy) Run(exitChan <-chan struct{}) {
 
 // SetupNoBootRom brings the gameboy to the state after the bootrom finished
 func (gb *GameBoy) SetupNoBootRom() {
-	gb.MMU.Write(mmu.AddrBootmodeFlag, 0x01)
+	gb.MMU.Write(consts.AddrBootmodeFlag, 0x01)
 	gb.CPU.SetRegisterValues(0x0100, 0xFFFE, 0x01, 0x00, 0x13, 0x00, 0xD8, 0xB0, 0x01, 0x4D)
 	gb.MMU.Write(0xFF05, 0x00)
 	gb.MMU.Write(0xFF06, 0x00)

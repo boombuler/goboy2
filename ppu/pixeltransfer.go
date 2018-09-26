@@ -1,5 +1,7 @@
 package ppu
 
+import "goboy2/consts"
+
 type pixelTransfer struct {
 	fifo    *pixelFiFo
 	fetcher *fetcher
@@ -68,14 +70,14 @@ func (pt *pixelTransfer) step(ppu *PPU) bool {
 
 	color := pt.fifo.dequeue(ppu)
 	ppu.curScreen.Set(int(pt.curX), int(ppu.ly), color)
-	if pt.curX++; int(pt.curX) == DisplayWidth {
+	if pt.curX++; int(pt.curX) == consts.DisplayWidth {
 		return true
 	}
 	return false
 }
 
 func (pt *pixelTransfer) start(ppu *PPU) bool {
-	if int(ppu.ly) >= DisplayHeight {
+	if int(ppu.ly) >= consts.DisplayHeight {
 		return false
 	}
 	pt.wnd = false

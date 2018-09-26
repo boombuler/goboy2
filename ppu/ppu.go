@@ -1,23 +1,10 @@
 package ppu
 
 import (
+	"goboy2/consts"
 	"goboy2/mmu"
 	"image"
 	"io"
-)
-
-const (
-	addrLCDC           uint16 = 0xFF40
-	addrSTAT           uint16 = 0xFF41
-	addrSCROLLY        uint16 = 0xFF42
-	addrSCROLLX        uint16 = 0xFF43
-	addrLY             uint16 = 0xFF44
-	addrLYC            uint16 = 0xFF45
-	addrBGP            uint16 = 0xFF47
-	addrOBJECTPALETTE0 uint16 = 0xFF48
-	addrOBJECTPALETTE1 uint16 = 0xFF49
-	addrWY             uint16 = 0xFF4A
-	addrWX             uint16 = 0xFF4B
 )
 
 type PPU struct {
@@ -44,12 +31,6 @@ type PPU struct {
 	vram vRAM
 	oam  oam
 }
-
-// DisplayWidth is the width of the output pictures
-const DisplayWidth int = 160
-
-// DisplayHeight is the height of the output pictures
-const DisplayHeight int = 144
 
 func (p *PPU) Dump(w io.Writer) {
 	w.Write([]byte{p.lcdc, p.scrollY, p.scrollX, byte(p.bgPal), byte(p.obj0), byte(p.obj1), p.winY, p.winX})
@@ -100,8 +81,9 @@ func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
 		},
 	}
 	mmu.ConnectPPU(ppu)
-	mmu.AddIODevice(ppu, addrLCDC, addrSTAT, addrSCROLLY, addrSCROLLX, addrLY,
-		addrLYC, addrBGP, addrOBJECTPALETTE0, addrOBJECTPALETTE1, addrWY, addrWX)
+	mmu.AddIODevice(ppu, consts.AddrLCDC, consts.AddrSTAT, consts.AddrSCROLLY, consts.AddrSCROLLX,
+		consts.AddrLY, consts.AddrLYC, consts.AddrBGP, consts.AddrOBJECTPALETTE0, consts.AddrOBJECTPALETTE1,
+		consts.AddrWY, consts.AddrWX)
 	return ppu
 }
 
@@ -111,31 +93,31 @@ func (p *PPU) state() ppuState {
 
 func (p *PPU) Read(addr uint16) byte {
 	switch addr {
-	case addrLCDC:
+	case consts.AddrLCDC:
 		return p.lcdc
-	case addrSTAT:
+	case consts.AddrSTAT:
 		var coincidence byte
 		if p.ly == p.lyc {
 			coincidence = 1
 		}
 		return byte(p.ie) | (coincidence << 2) | (byte(p.state()) & 0x03) | 0x80
-	case addrSCROLLY:
+	case consts.AddrSCROLLY:
 		return p.scrollY
-	case addrSCROLLX:
+	case consts.AddrSCROLLX:
 		return p.scrollX
-	case addrLY:
+	case consts.AddrLY:
 		return p.ly
-	case addrLYC:
+	case consts.AddrLYC:
 		return p.lyc
-	case addrBGP:
+	case consts.AddrBGP:
 		return byte(p.bgPal)
-	case addrOBJECTPALETTE0:
+	case consts.AddrOBJECTPALETTE0:
 		return byte(p.obj0)
-	case addrOBJECTPALETTE1:
+	case consts.AddrOBJECTPALETTE1:
 		return byte(p.obj1)
-	case addrWY:
+	case consts.AddrWY:
 		return p.winY
-	case addrWX:
+	case consts.AddrWX:
 		return p.winX
 	default:
 		if addr >= 0x8000 && addr <= 0x9FFF {
@@ -156,7 +138,7 @@ func (p *PPU) Read(addr uint16) byte {
 
 func (p *PPU) Write(addr uint16, val byte) {
 	switch addr {
-	case addrLCDC:
+	case consts.AddrLCDC:
 		oldEnabled := p.lcdEnabled()
 		p.lcdc = val
 		if newEnabled := p.lcdEnabled(); oldEnabled != newEnabled {
@@ -169,26 +151,26 @@ func (p *PPU) Write(addr uint16, val byte) {
 				p.curScreen = newScreen()
 			}
 		}
-	case addrSTAT:
+	case consts.AddrSTAT:
 		p.ie = lcdInterrupts(val) & liALL
-	case addrSCROLLY:
+	case consts.AddrSCROLLY:
 		p.scrollY = val
-	case addrSCROLLX:
+	case consts.AddrSCROLLX:
 		p.scrollX = val
-	case addrLY:
+	case consts.AddrLY:
 		// readOnly...
 		return
-	case addrLYC:
+	case consts.AddrLYC:
 		p.lyc = val
-	case addrBGP:
+	case consts.AddrBGP:
 		p.bgPal = palette(val)
-	case addrOBJECTPALETTE0:
+	case consts.AddrOBJECTPALETTE0:
 		p.obj0 = palette(val)
-	case addrOBJECTPALETTE1:
+	case consts.AddrOBJECTPALETTE1:
 		p.obj1 = palette(val)
-	case addrWY:
+	case consts.AddrWY:
 		p.winY = val
-	case addrWX:
+	case consts.AddrWX:
 		p.winX = val
 	default:
 		if addr >= 0x8000 && addr <= 0x9FFF {

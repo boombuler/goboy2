@@ -1,6 +1,9 @@
 package serial
 
-import "goboy2/mmu"
+import (
+	"goboy2/consts"
+	"goboy2/mmu"
+)
 
 type Serial struct {
 	mmu      mmu.MMU
@@ -16,9 +19,7 @@ const (
 	addrSB = 0xFF01 // Serial Transfer Data
 	addrSC = 0xFF02 // Serial Transfer Control
 
-	gbFreq           = 4194304
-	gbTicksPerSecond = gbFreq / 4 // use M-Cylces
-	serialTickDiv    = gbTicksPerSecond / 2048
+	serialTickDiv = consts.TicksPerSecond / 2048
 )
 
 type SerialTransfer interface {

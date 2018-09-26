@@ -1,18 +1,8 @@
 package timer
 
 import (
+	"goboy2/consts"
 	"goboy2/mmu"
-)
-
-const (
-	// AddrDivider is the address of the timer DIV register
-	AddrDivider = 0xFF04
-	// AddrTIMA is the address of the timer TIMA register
-	AddrTIMA = 0xFF05
-	// AddrModulo is the address of the timer TMA register
-	AddrModulo = 0xFF06
-	// AddrCtrl is the address of the timer TAC register
-	AddrCtrl = 0xFF07
 )
 
 var clockSpeedBit = [4]uint16{1 << 9, 1 << 3, 1 << 5, 1 << 7}
@@ -47,7 +37,7 @@ const (
 func New(mmu mmu.MMU) *Timer {
 	t := new(Timer)
 	t.mmu = mmu
-	mmu.AddIODevice(t, AddrDivider, AddrTIMA, AddrModulo, AddrCtrl)
+	mmu.AddIODevice(t, consts.AddrDivider, consts.AddrTIMA, consts.AddrModulo, consts.AddrCtrl)
 	return t
 }
 
@@ -96,13 +86,13 @@ func (t *Timer) incTIMA() {
 // Read from the timer IO registers
 func (t *Timer) Read(addr uint16) byte {
 	switch addr {
-	case AddrDivider:
+	case consts.AddrDivider:
 		return byte(t.div >> 8)
-	case AddrTIMA:
+	case consts.AddrTIMA:
 		return t.tima
-	case AddrModulo:
+	case consts.AddrModulo:
 		return t.tma
-	case AddrCtrl:
+	case consts.AddrCtrl:
 		return t.tac | 0xF8
 	}
 	return 0x00
@@ -111,16 +101,16 @@ func (t *Timer) Read(addr uint16) byte {
 // Write to the timer IO registers
 func (t *Timer) Write(addr uint16, value byte) {
 	switch addr {
-	case AddrDivider:
+	case consts.AddrDivider:
 		t.setDiv(0)
-	case AddrTIMA:
+	case consts.AddrTIMA:
 		if t.overflow < osInterrupt {
 			t.tima = value
 			t.overflow = osNone
 		}
-	case AddrModulo:
+	case consts.AddrModulo:
 		t.tma = value
-	case AddrCtrl:
+	case consts.AddrCtrl:
 		oldHi := t.hi()
 		t.tac = value & 0x07
 		if oldHi && !t.hi() { // Check falling edge

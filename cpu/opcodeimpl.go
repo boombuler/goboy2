@@ -1,6 +1,7 @@
 package cpu
 
 import (
+	"goboy2/consts"
 	"goboy2/mmu"
 )
 
@@ -10,7 +11,7 @@ func stop() opCode {
 
 func halt() opCode {
 	return opCodeFn(func(c *CPU, s *ocState) {
-		if c.ime || (mmu.IRQ(c.mmu.Read(mmu.AddrIRQFlags))&mmu.IRQ(c.mmu.Read(mmu.AddrIRQEnabled))&mmu.IRQAll) == mmu.IRQNone {
+		if c.ime || (mmu.IRQ(c.mmu.Read(consts.AddrIRQFlags))&mmu.IRQ(c.mmu.Read(consts.AddrIRQEnabled))&mmu.IRQAll) == mmu.IRQNone {
 			c.haltEnabled = true
 		} else {
 			c.haltBug = true

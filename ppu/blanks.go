@@ -1,6 +1,7 @@
 package ppu
 
 import (
+	"goboy2/consts"
 	"goboy2/mmu"
 )
 
@@ -16,7 +17,7 @@ func (hb *hblank) step(ppu *PPU) bool {
 	return hb.ticks >= 456
 }
 func (hb *hblank) start(ppu *PPU) bool {
-	if int(ppu.ly) >= DisplayHeight {
+	if int(ppu.ly) >= consts.DisplayHeight {
 		return false
 	}
 	hb.ticks = ppu.ticksInLine
@@ -36,11 +37,11 @@ func (vb *vblank) step(ppu *PPU) bool {
 	return vb.ticks >= 456
 }
 func (vb *vblank) start(ppu *PPU) bool {
-	if int(ppu.ly) < DisplayHeight {
+	if int(ppu.ly) < consts.DisplayHeight {
 		return false
 	}
 	vb.ticks = 0
-	if int(ppu.ly) == DisplayHeight {
+	if int(ppu.ly) == consts.DisplayHeight {
 		ppu.screenOut <- ppu.curScreen
 		ppu.curScreen = newScreen()
 		ppu.requstLcdcInterrupt(liVBlank)

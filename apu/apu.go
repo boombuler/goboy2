@@ -1,6 +1,7 @@
 package apu
 
 import (
+	"goboy2/consts"
 	"goboy2/mmu"
 	"sync"
 	"time"
@@ -14,14 +15,12 @@ const (
 )
 
 const (
-	gbFreq                            = 4194304
-	gbTicksPerSecond                  = gbFreq / 4 // use M-Cylces
-	frameSequencerTicks               = gbTicksPerSecond / 512
+	frameSequencerTicks               = consts.TicksPerSecond / 512
 	sampleRate                        = 2 * 22050
 	sampleBufferLength                = 1024
 	channelCount                      = 2
 	sampleDuration      time.Duration = time.Second / sampleRate
-	stepDuration        time.Duration = time.Second / gbTicksPerSecond
+	stepDuration        time.Duration = time.Second / consts.TicksPerSecond
 	sampleSize                        = 4 // sizeOf(float32)
 
 	addrNR10    uint16 = 0xFF10

@@ -1,5 +1,7 @@
 package ppu
 
+import "goboy2/consts"
+
 type oamSearch struct {
 	readY     bool
 	spriteX   byte
@@ -11,7 +13,7 @@ type oamSearch struct {
 const visibleSpriteDataCount = 10
 
 func (os *oamSearch) start(ppu *PPU) bool {
-	if int(ppu.ly) >= DisplayHeight {
+	if int(ppu.ly) >= consts.DisplayHeight {
 		return false
 	}
 	os.readY = true

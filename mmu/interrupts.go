@@ -1,5 +1,7 @@
 package mmu
 
+import "goboy2/consts"
+
 type IRQ byte
 
 const (
@@ -10,9 +12,6 @@ const (
 	IRQSerial  IRQ = 0x08
 	IRQJoypad  IRQ = 0x10
 	IRQAll         = IRQVBlank | IRQLCDStat | IRQTimer | IRQSerial | IRQJoypad
-
-	AddrIRQEnabled uint16 = 0xFFFF
-	AddrIRQFlags   uint16 = 0xFF0F
 )
 
 type irqHandler struct {
@@ -21,9 +20,9 @@ type irqHandler struct {
 
 func (h *irqHandler) Read(addr uint16) byte {
 	switch addr {
-	case AddrIRQEnabled:
+	case consts.AddrIRQEnabled:
 		return byte(h.mask)
-	case AddrIRQFlags:
+	case consts.AddrIRQFlags:
 		return byte(h.flag) | 0xE0
 	default:
 		return 0
@@ -31,9 +30,9 @@ func (h *irqHandler) Read(addr uint16) byte {
 }
 func (h *irqHandler) Write(addr uint16, value byte) {
 	switch addr {
-	case AddrIRQEnabled:
+	case consts.AddrIRQEnabled:
 		h.mask = IRQ(value)
-	case AddrIRQFlags:
+	case consts.AddrIRQFlags:
 		h.flag = IRQ(value & 0x1F)
 	default:
 		return

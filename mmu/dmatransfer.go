@@ -10,8 +10,7 @@ type dmaTransfer struct {
 }
 
 const (
-	AddrDMATransfer uint16 = 0xFF46
-	addrOAMStart    uint16 = 0xFE00
+	addrOAMStart uint16 = 0xFE00
 )
 
 func (c *dmaTransfer) Read(addr uint16) byte {
