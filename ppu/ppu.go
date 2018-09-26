@@ -13,6 +13,7 @@ type PPU struct {
 	phases         []ppuPhase
 	visibleSprites []*spriteData
 	ticksInLine    uint16
+	dma            *vramDMA
 
 	lcdc      byte
 	ie        lcdInterrupts
@@ -84,6 +85,10 @@ func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
 	mmu.AddIODevice(ppu, consts.AddrLCDC, consts.AddrSTAT, consts.AddrSCROLLY, consts.AddrSCROLLX,
 		consts.AddrLY, consts.AddrLYC, consts.AddrBGP, consts.AddrOBJECTPALETTE0, consts.AddrOBJECTPALETTE1,
 		consts.AddrWY, consts.AddrWX)
+	if mmu.GBC() {
+		ppu.dma = new(vramDMA)
+		mmu.AddIODevice(ppu.dma, consts.AddrHDMA1, consts.AddrHDMA2, consts.AddrHDMA3, consts.AddrHDMA4, consts.AddrHDMA5)
+	}
 	return ppu
 }
 
@@ -234,13 +239,14 @@ func (p *PPU) lcdEnabled() bool {
 
 // Step the PPU for one M-Cycle
 func (p *PPU) Step() {
-	if !p.lcdEnabled() {
-		return
-	}
-
 	// ppu runs at 4 times the speed of the cpu
 	for i := 0; i < 4; i++ {
-		p.stepOne()
+		if p.lcdEnabled() {
+			p.stepOne()
+		}
+		if dma := p.dma; dma != nil {
+			dma.Step(p)
+		}
 	}
 }
 

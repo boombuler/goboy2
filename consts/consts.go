@@ -41,6 +41,12 @@ const (
 	AddrWY             uint16 = 0xFF4A
 	AddrWX             uint16 = 0xFF4B
 
+	AddrHDMA1 uint16 = 0xFF51
+	AddrHDMA2 uint16 = 0xFF52
+	AddrHDMA3 uint16 = 0xFF53
+	AddrHDMA4 uint16 = 0xFF54
+	AddrHDMA5 uint16 = 0xFF55
+
 	// AddrKEY1 is the GBC Speed-Mode Register
 	AddrKEY1 uint16 = 0xFF4D
 	// AddrRP is the GBC  Infrared Communications Port
