@@ -41,8 +41,14 @@ const (
 	AddrWY             uint16 = 0xFF4A
 	AddrWX             uint16 = 0xFF4B
 
+	// AddrKEY1 is the GBC Speed-Mode Register
+	AddrKEY1 uint16 = 0xFF4D
+	// AddrRP is the GBC  Infrared Communications Port
+	AddrRP uint16 = 0xFF56
 	// AddrBootmodeFlag is the address of the BootMode HardwareRegister
 	AddrBootmodeFlag uint16 = 0xFF50
+	// AddrSVBK is the working ram bank seletor for GBC
+	AddrSVBK uint16 = 0xFF70
 	// AddrIRQEnabled is the address of the IE HardwareRegister
 	AddrIRQEnabled uint16 = 0xFFFF
 )

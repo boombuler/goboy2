@@ -43,11 +43,12 @@ func (bm *bootMode) Write(addr uint16, value byte) {
 }
 
 func New(gbc bool) MMU {
+	gbc = true
 	res := &mmuImpl{
 		gbc:       gbc,
 		ioDevices: make([]IODevice, 256),
-		ram:       new(workingRAM),
 	}
+	res.ram = newWorkingRAM(res)
 	res.dma = &dmaTransfer{mmu: res}
 	res.AddIODevice(new(irqHandler), consts.AddrIRQFlags, consts.AddrIRQEnabled)
 	res.AddIODevice(new(bootMode), consts.AddrBootmodeFlag)
@@ -88,8 +89,13 @@ func (m *mmuImpl) Read(addr uint16) byte {
 	switch {
 	// [0000-3FFF] Cartridge ROM, bank 0
 	case addr >= 0x0000 && addr <= 0x3FFF:
-		if addr <= 0x00FF && m.Read(consts.AddrBootmodeFlag) == 0x00 {
-			return BOOTROM[addr]
+		if m.Read(consts.AddrBootmodeFlag) == 0x00 {
+			if m.gbc && addr < uint16(len(GBC_BOOTROM)) {
+				return GBC_BOOTROM[addr]
+			}
+			if !m.gbc && addr < uint16(len(BOOTROM)) {
+				return BOOTROM[addr]
+			}
 		}
 		return m.cartridge.Read(addr)
 	// [4000-7FFF] Cartridge ROM, other banks
