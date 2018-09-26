@@ -43,7 +43,6 @@ func (bm *bootMode) Write(addr uint16, value byte) {
 }
 
 func New(gbc bool) MMU {
-	gbc = true
 	res := &mmuImpl{
 		gbc:       gbc,
 		ioDevices: make([]IODevice, 256),
