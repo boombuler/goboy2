@@ -41,11 +41,17 @@ const (
 	AddrWY             uint16 = 0xFF4A
 	AddrWX             uint16 = 0xFF4B
 
+	AddrVBK   uint16 = 0xFF4F
 	AddrHDMA1 uint16 = 0xFF51
 	AddrHDMA2 uint16 = 0xFF52
 	AddrHDMA3 uint16 = 0xFF53
 	AddrHDMA4 uint16 = 0xFF54
 	AddrHDMA5 uint16 = 0xFF55
+
+	AddrBGPI uint16 = 0xFF68
+	AddrBGPD uint16 = 0xFF69
+	AddrOBPI uint16 = 0xFF6A
+	AddrOBPD uint16 = 0xFF6B
 
 	// AddrKEY1 is the GBC Speed-Mode Register
 	AddrKEY1 uint16 = 0xFF4D

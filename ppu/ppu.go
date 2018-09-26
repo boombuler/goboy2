@@ -4,7 +4,6 @@ import (
 	"goboy2/consts"
 	"goboy2/mmu"
 	"image"
-	"io"
 )
 
 type PPU struct {
@@ -15,63 +14,35 @@ type PPU struct {
 	ticksInLine    uint16
 	dma            *vramDMA
 
-	lcdc      byte
-	ie        lcdInterrupts
-	ly        byte
-	lyc       byte
-	scrollY   byte
-	scrollX   byte
-	winX      byte
-	winY      byte
-	bgPal     palette
-	obj0      palette
-	obj1      palette
+	lcdc    byte
+	ie      lcdInterrupts
+	ly      byte
+	lyc     byte
+	scrollY byte
+	scrollX byte
+	winX    byte
+	winY    byte
+	bgPal   gbPalette
+	objPal  gbPalette
+	bgcPal  *gbcPalette
+	obcPal  *gbcPalette
+
 	screenOut chan<- *image.RGBA
 	curScreen *image.RGBA
 
-	vram vRAM
-	oam  oam
-}
-
-func (p *PPU) Dump(w io.Writer) {
-	w.Write([]byte{p.lcdc, p.scrollY, p.scrollX, byte(p.bgPal), byte(p.obj0), byte(p.obj1), p.winY, p.winX})
-
-	w.Write(p.vram)
-
-	oam := make([]byte, 0xA0)
-	for addr := 0xFE00; addr <= 0xFE9F; addr++ {
-		oam[addr-0xFE00] = p.oam.Read(uint16(addr))
-	}
-	w.Write(oam)
-}
-
-func (p *PPU) LoadDump(r io.Reader) {
-	buf := make([]byte, 8)
-	r.Read(buf)
-	p.lcdc = buf[0]
-	p.scrollY = buf[1]
-	p.scrollX = buf[2]
-	p.bgPal = palette(buf[3])
-	p.obj0 = palette(buf[4])
-	p.obj1 = palette(buf[5])
-	p.winY = buf[6]
-	p.winX = buf[7]
-	p.curScreen = newScreen()
-
-	r.Read(p.vram)
-	oam := make([]byte, 0xA0)
-	r.Read(oam)
-	for addr := 0xFE00; addr <= 0xFE9F; addr++ {
-		p.oam.Write(uint16(addr), oam[addr-0xFE00])
-	}
+	vram0  vRAM
+	vram1  vRAM
+	vramHi bool
+	oam    *oam
 }
 
 // New creates a new ppu and connects it to the given mmu
 func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
+	gbc := mmu.GBC()
 	ppu := &PPU{
 		mmu:       mmu,
-		vram:      newVRAM(),
-		oam:       newOAM(),
+		vram0:     newVRAM(),
+		oam:       newOAM(gbc),
 		screenOut: screen,
 		phaseIdx:  0,
 		phases: []ppuPhase{
@@ -85,9 +56,15 @@ func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
 	mmu.AddIODevice(ppu, consts.AddrLCDC, consts.AddrSTAT, consts.AddrSCROLLY, consts.AddrSCROLLX,
 		consts.AddrLY, consts.AddrLYC, consts.AddrBGP, consts.AddrOBJECTPALETTE0, consts.AddrOBJECTPALETTE1,
 		consts.AddrWY, consts.AddrWX)
-	if mmu.GBC() {
+	if gbc {
+		ppu.vram1 = newVRAM()
 		ppu.dma = new(vramDMA)
+		ppu.bgcPal = &gbcPalette{IndexAdr: consts.AddrBGPI}
+		ppu.obcPal = &gbcPalette{IndexAdr: consts.AddrOBPI}
 		mmu.AddIODevice(ppu.dma, consts.AddrHDMA1, consts.AddrHDMA2, consts.AddrHDMA3, consts.AddrHDMA4, consts.AddrHDMA5)
+		mmu.AddIODevice(ppu.bgcPal, consts.AddrBGPI, consts.AddrBGPD)
+		mmu.AddIODevice(ppu.obcPal, consts.AddrOBPI, consts.AddrOBPD)
+		mmu.AddIODevice(ppu, consts.AddrVBK)
 	}
 	return ppu
 }
@@ -98,6 +75,11 @@ func (p *PPU) state() ppuState {
 
 func (p *PPU) Read(addr uint16) byte {
 	switch addr {
+	case consts.AddrVBK:
+		if p.vramHi {
+			return 0xFF
+		}
+		return 0xFE
 	case consts.AddrLCDC:
 		return p.lcdc
 	case consts.AddrSTAT:
@@ -117,9 +99,9 @@ func (p *PPU) Read(addr uint16) byte {
 	case consts.AddrBGP:
 		return byte(p.bgPal)
 	case consts.AddrOBJECTPALETTE0:
-		return byte(p.obj0)
+		return byte(p.objPal)
 	case consts.AddrOBJECTPALETTE1:
-		return byte(p.obj1)
+		return byte(p.objPal >> 8)
 	case consts.AddrWY:
 		return p.winY
 	case consts.AddrWX:
@@ -127,11 +109,14 @@ func (p *PPU) Read(addr uint16) byte {
 	default:
 		if addr >= 0x8000 && addr <= 0x9FFF {
 			if p.state().canAccessVRAM() {
-				return p.vram.Read(addr)
+				if p.mmu.GBC() && p.vramHi {
+					return p.vram1.Read(addr)
+				}
+				return p.vram0.Read(addr)
 			}
 			return 0xFF
 		} else if addr >= 0xFE00 && addr <= 0xFE9F {
-			if p.state().canAccessVRAM() {
+			if p.state().canAccessOAM() {
 				return p.oam.Read(addr)
 			}
 			return 0xFF
@@ -143,6 +128,8 @@ func (p *PPU) Read(addr uint16) byte {
 
 func (p *PPU) Write(addr uint16, val byte) {
 	switch addr {
+	case consts.AddrVBK:
+		p.vramHi = val&1 != 0
 	case consts.AddrLCDC:
 		oldEnabled := p.lcdEnabled()
 		p.lcdc = val
@@ -168,11 +155,11 @@ func (p *PPU) Write(addr uint16, val byte) {
 	case consts.AddrLYC:
 		p.lyc = val
 	case consts.AddrBGP:
-		p.bgPal = palette(val)
+		p.bgPal = gbPalette(val)
 	case consts.AddrOBJECTPALETTE0:
-		p.obj0 = palette(val)
+		p.objPal = (p.objPal & 0xFF00) | gbPalette(val)
 	case consts.AddrOBJECTPALETTE1:
-		p.obj1 = palette(val)
+		p.objPal = (p.objPal & 0x00FF) | gbPalette(val)
 	case consts.AddrWY:
 		p.winY = val
 	case consts.AddrWX:
@@ -180,10 +167,14 @@ func (p *PPU) Write(addr uint16, val byte) {
 	default:
 		if addr >= 0x8000 && addr <= 0x9FFF {
 			if p.state().canAccessVRAM() {
-				p.vram.Write(addr, val)
+				if p.mmu.GBC() && p.vramHi {
+					p.vram1.Write(addr, val)
+					return
+				}
+				p.vram0.Write(addr, val)
 			}
 		} else if addr >= 0xFE00 && addr <= 0xFE9F {
-			if p.state().canAccessVRAM() {
+			if p.state().canAccessOAM() {
 				p.oam.Write(addr, val)
 			}
 		}

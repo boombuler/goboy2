@@ -6,10 +6,11 @@ import (
 
 type paletteSrc byte
 
+// Fifo Format: BPPP _FCC (B = BG-Palette; P = Palette; F = Priority-Flag; C = Color)
+
 const (
 	psBG paletteSrc = iota
-	psObj0
-	psObj1
+	psObj
 )
 
 type pixelFiFo struct {
@@ -43,7 +44,13 @@ func colIdx(pixel byte) byte {
 	return pixel & 0x03
 }
 func prio(pixel byte) bool {
+	return pixel&0x04 != 0
+}
+func useBGPal(pixel byte) bool {
 	return pixel&0x80 != 0
+}
+func palIdx(pixel byte) int {
+	return int(pixel>>4) & 0x07
 }
 
 func (fifo *pixelFiFo) setOverlay(pixData []byte, offset int) {
@@ -51,7 +58,7 @@ func (fifo *pixelFiFo) setOverlay(pixData []byte, offset int) {
 		p := pixData[j]
 		i := j - offset
 		bi := fifo.idx(i)
-		if ps := paletteSrc((fifo.buffer[bi] >> 4) & 0x07); ps != psBG {
+		if !useBGPal(fifo.buffer[bi]) {
 			continue
 		}
 		priority := prio(p)
@@ -66,16 +73,19 @@ func (fifo *pixelFiFo) dequeue(ppu *PPU) color.Color {
 	fifo.startIdx = (fifo.startIdx + 1) % len(fifo.buffer)
 	fifo.len--
 
-	src := paletteSrc((b >> 4) & 0x07)
 	pix := colIdx(b)
 
-	palette := ppu.bgPal
-	switch src {
-	case psObj0:
-		palette = ppu.obj0
-	case psObj1:
-		palette = ppu.obj1
+	var palette palette
+	if ppu.mmu.GBC() {
+		palette = ppu.obcPal
+		if useBGPal(b) {
+			palette = ppu.bgcPal
+		}
+	} else {
+		palette = ppu.objPal
+		if useBGPal(b) {
+			palette = ppu.bgPal
+		}
 	}
-
-	return palette.toColor(pix)
+	return palette.toColor(palIdx(b), pix)
 }

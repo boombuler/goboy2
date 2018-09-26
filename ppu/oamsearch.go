@@ -38,14 +38,14 @@ func (os *oamSearch) state() ppuState {
 
 func (os *oamSearch) step(ppu *PPU) bool {
 	if os.readY {
-		os.spriteY = ppu.oam[os.spriteIdx].y
+		os.spriteY = ppu.oam.data[os.spriteIdx].y
 		os.readY = false
 	} else {
 		if os.resIdx < len(ppu.visibleSprites) {
-			os.spriteX = ppu.oam[os.spriteIdx].x
+			os.spriteX = ppu.oam.data[os.spriteIdx].x
 
 			if yTest := ppu.ly + 0x10; os.spriteY <= yTest && yTest < os.spriteY+ppu.spriteHeight() {
-				ppu.visibleSprites[os.resIdx] = &ppu.oam[os.spriteIdx]
+				ppu.visibleSprites[os.resIdx] = &ppu.oam.data[os.spriteIdx]
 				os.resIdx++
 			}
 		}
@@ -53,7 +53,7 @@ func (os *oamSearch) step(ppu *PPU) bool {
 		os.spriteIdx++
 		os.readY = true
 	}
-	if os.spriteIdx >= len(ppu.oam) {
+	if os.spriteIdx >= len(ppu.oam.data) {
 		return true
 	}
 	return false
