@@ -82,12 +82,30 @@ var mbcFactories = map[byte]func(c *Cartridge, data []byte, bf BatteryFactory) (
 	// 0x15 MBC4
 	// 0x16 MBC4+RAM
 	// 0x17 MBC4+RAM+BAT
-	// 0x19 MBC5
-	// 0x1A MBC5+RAM
-	// 0x1B MBC5+RAM+BAT
-	// 0x1C MBC5+RUMBLE
-	// 0x1D MBC5+RUMBLE+RAM
-	// 0x1E MBC5+RUMBLE+RAM+BAT
+	0x19: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
+		// 0x19 MBC5
+		return createMBC5(c, data, nil)
+	},
+	0x1A: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
+		// 0x1A MBC5+RAM
+		return createMBC5(c, data, nil)
+	},
+	0x1B: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
+		// 0x1B MBC5+RAM+BAT
+		return createMBC5(c, data, bf())
+	},
+	0x1C: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
+		// 0x1C MBC5+RUMBLE
+		return createMBC5(c, data, nil)
+	},
+	0x1D: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
+		// 0x1D MBC5+RUMBLE+RAM
+		return createMBC5(c, data, nil)
+	},
+	0x1E: func(c *Cartridge, data []byte, bf BatteryFactory) (MBC, error) {
+		// 0x1E MBC5+RUMBLE+RAM+BAT
+		return createMBC5(c, data, bf())
+	},
 	// 0xFC POCKET CAMERA
 	// 0xFD BANDAI TAMA5
 	// 0xFE HuC3
@@ -126,7 +144,7 @@ func Load(reader io.Reader, bf BatteryFactory) (*Cartridge, error) {
 	c.Version = rom[0x014C]
 	mbcFactory, ok := mbcFactories[rom[0x0147]]
 	if !ok {
-		return nil, fmt.Errorf("MBC type not supported: %v", rom[0x0147])
+		return nil, fmt.Errorf("MBC type not supported: %02x", rom[0x0147])
 	} else {
 		c.MBC, err = mbcFactory(c, rom, bf)
 		if err != nil {
