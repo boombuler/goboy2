@@ -1,9 +1,5 @@
 package ppu
 
-import (
-	"fmt"
-)
-
 type fetcherState byte
 
 const (
@@ -202,9 +198,6 @@ func (f *fetcher) fillPixBuffer(ppu *PPU, attr renderAttr, isObj bool) {
 	}
 
 	palIdx := attr.palIdx(!ppu.dmgMode()) & 0x07
-	if palIdx != 0 && ppu.dmgMode() {
-		fmt.Println("blub")
-	}
 	pixBase := byte(palIdx) << 4
 	if !isObj {
 		pixBase |= 0x80
