@@ -51,17 +51,18 @@ func (pt *pixelTransfer) step(ppu *PPU) bool {
 			return false
 		}
 		for i, s := range ppu.visibleSprites {
-			if s == nil {
+			if s < 0 {
 				continue
 			}
-			if pt.curX == 0 && s.x < 8 {
-				pt.fetcher.fetchSprite(ppu, s, 8-s.x)
-				ppu.visibleSprites[i] = nil
+			sprite := ppu.oam.data[s]
+			if pt.curX == 0 && sprite.x < 8 {
+				pt.fetcher.fetchSprite(ppu, s, 8-sprite.x)
+				ppu.visibleSprites[i] = -1
 				return false
 
-			} else if s.x-8 == pt.curX {
+			} else if sprite.x-8 == pt.curX {
 				pt.fetcher.fetchSprite(ppu, s, 0)
-				ppu.visibleSprites[i] = nil
+				ppu.visibleSprites[i] = -1
 				return false
 			}
 		}

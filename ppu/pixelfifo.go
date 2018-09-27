@@ -8,6 +8,7 @@ import (
 
 type pixelFiFo struct {
 	buffer   []byte
+	oamIdx   []int
 	len      int
 	startIdx int
 }
@@ -15,6 +16,7 @@ type pixelFiFo struct {
 func newPixelFiFo() *pixelFiFo {
 	return &pixelFiFo{
 		buffer: make([]byte, 16),
+		oamIdx: make([]int, 16),
 	}
 }
 
@@ -28,7 +30,9 @@ func (fifo *pixelFiFo) idx(i int) int {
 
 func (fifo *pixelFiFo) enqueue(pixData []byte) {
 	for i, d := range pixData {
-		fifo.buffer[fifo.idx(i+fifo.len)] = d
+		idx := fifo.idx(i + fifo.len)
+		fifo.buffer[idx] = d
+		fifo.oamIdx[idx] = -1
 	}
 	fifo.len += len(pixData)
 }
@@ -46,22 +50,39 @@ func palIdx(pixel byte) int {
 	return int(pixel>>4) & 0x07
 }
 
-func (fifo *pixelFiFo) setOverlay(pixData []byte, offset int) {
+func (fifo *pixelFiFo) setOverlay(ppu *PPU, pixData []byte, offset int, oamIndex int) {
 	for j := offset; j < len(pixData); j++ {
 		p := pixData[j]
 		i := j - offset
 		bi := fifo.idx(i)
-		if !useBGPal(fifo.buffer[bi]) || colIdx(p) == 0 {
-			continue
-		}
-		//bgPrio :=  prio(fifo.buffer[bi])
-
-		priority := prio(p) //|| bgPrio
-
-		if (priority && (colIdx(fifo.buffer[bi]) == 0)) || (!priority && (colIdx(p) != 0)) {
+		if ppu.usePixel(fifo.buffer[bi], p, fifo.oamIdx[bi], oamIndex) {
 			fifo.buffer[bi] = p
+			fifo.oamIdx[bi] = oamIndex
 		}
 	}
+}
+
+func (ppu *PPU) usePixel(curPix, newPix byte, curOAMIdx, newOAMIdx int) bool {
+	if colIdx(newPix) == 0 {
+		return false
+	}
+
+	if ppu.dmgMode() {
+		if !useBGPal(curPix) {
+			return false
+		}
+		return !prio(newPix) || colIdx(curPix) == 0
+	}
+	// GBC Mode
+	if useBGPal(curPix) {
+		if !ppu.masterPriority() {
+			return true
+		} else if prio(curPix) {
+			return colIdx(curPix) == 0
+		}
+		return !prio(newPix) || colIdx(curPix) == 0
+	}
+	return curOAMIdx > newOAMIdx
 }
 
 func (fifo *pixelFiFo) dequeue(ppu *PPU) color.Color {

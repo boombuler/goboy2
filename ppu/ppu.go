@@ -10,7 +10,7 @@ type PPU struct {
 	mmu            mmu.MMU
 	phaseIdx       int
 	phases         []ppuPhase
-	visibleSprites []*spriteData
+	visibleSprites []int
 	ticksInLine    uint16
 	dma            *vramDMA
 

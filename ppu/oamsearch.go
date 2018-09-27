@@ -22,11 +22,10 @@ func (os *oamSearch) start(ppu *PPU) bool {
 	os.resIdx = 0
 	os.spriteIdx = 0
 	if ppu.visibleSprites == nil {
-		ppu.visibleSprites = make([]*spriteData, visibleSpriteDataCount)
-	} else {
-		for i := 0; i < visibleSpriteDataCount; i++ {
-			ppu.visibleSprites[i] = nil
-		}
+		ppu.visibleSprites = make([]int, visibleSpriteDataCount)
+	}
+	for i := 0; i < visibleSpriteDataCount; i++ {
+		ppu.visibleSprites[i] = -1
 	}
 	ppu.requstLcdcInterrupt(liOAM)
 	return true
@@ -45,7 +44,7 @@ func (os *oamSearch) step(ppu *PPU) bool {
 			os.spriteX = ppu.oam.data[os.spriteIdx].x
 
 			if yTest := ppu.ly + 0x10; os.spriteY <= yTest && yTest < os.spriteY+ppu.spriteHeight() {
-				ppu.visibleSprites[os.resIdx] = &ppu.oam.data[os.spriteIdx]
+				ppu.visibleSprites[os.resIdx] = os.spriteIdx
 				os.resIdx++
 			}
 		}
