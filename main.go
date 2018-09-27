@@ -38,6 +38,7 @@ var (
 	noboot     = flag.Bool("noboot", false, "skip boot sequence")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 	mooneye    = flag.Bool("mooneye", false, "runs a mooneye test-rom")
+	gbc        = flag.Bool("color", false, "Force Gameboy Color mode")
 )
 
 func main() {
@@ -65,7 +66,7 @@ func main() {
 	}
 
 	screen.Main(func(s *screen.Screen, input <-chan interface{}, exitChan <-chan struct{}) {
-		gb := NewGameBoy(c, s.GetOutputChannel())
+		gb := NewGameBoy(c, s.GetOutputChannel(), *gbc)
 		go func() {
 			for {
 				select {

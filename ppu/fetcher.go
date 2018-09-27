@@ -1,5 +1,9 @@
 package ppu
 
+import (
+	"fmt"
+)
+
 type fetcherState byte
 
 const (
@@ -27,7 +31,7 @@ type fetcher struct {
 	signedIDs    bool
 	tileLine     byte
 	tileID       byte
-	tileAttr     byte
+	tileAttr     tileAttr
 	data1        byte
 	data2        byte
 	sprite       *spriteData
@@ -35,8 +39,37 @@ type fetcher struct {
 	spriteOffset byte
 }
 
+type tileAttr byte
+
+func (ta tileAttr) palIdx(gbc bool) int {
+	if gbc {
+		return 0
+	}
+	return int(ta) & 0x07
+}
+func (ta tileAttr) vramHi() bool {
+	return ta&(1<<3) != 0
+}
+func (ta tileAttr) flipH() bool {
+	return ta&(1<<5) != 0
+}
+func (ta tileAttr) flipV() bool {
+	return ta&(1<<6) != 0
+}
+func (ta tileAttr) prio() bool {
+	return ta&(1<<7) != 0
+}
+
+type renderAttr interface {
+	palIdx(gbc bool) int
+	vramHi() bool
+	flipH() bool
+	flipV() bool
+	prio() bool
+}
+
 var (
-	emptyLine = []byte{0, 0, 0, 0, 0, 0, 0, 0}
+	emptyLine = []byte{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80}
 )
 
 func newFetcher(fifo *pixelFiFo) *fetcher {
@@ -92,62 +125,57 @@ func (f *fetcher) tick(ppu *PPU) {
 
 	switch f.state {
 	case fsReadTileID:
-		f.tileID = ppu.vram0.Read(f.mapAddress + f.xOffset)
-		if ppu.mmu.GBC() {
-			f.tileAttr = ppu.vram1.Read(f.mapAddress + f.xOffset)
-		} else {
+		addr := f.mapAddress + f.xOffset
+		f.tileID = ppu.vram0.Read(addr)
+		if ppu.dmgMode() {
 			f.tileAttr = 0
+		} else {
+			f.tileAttr = tileAttr(ppu.vram1.Read(addr))
 		}
 		f.state = fsReadData1
 	case fsReadData1:
-		flipV := f.tileAttr&(1<<6) != 0
-		hiBank := f.tileAttr&(1<<3) != 0
-		f.data1 = f.getTileData(ppu, hiBank, f.tileLine, 0, f.tileAddress, f.signedIDs, flipV, 8)
+		f.data1 = f.getTileData(ppu, f.tileLine, 0, f.tileAddress, f.signedIDs, 8, f.tileAttr)
 		f.state = fsReadData2
 		break
 	case fsReadData2:
-		flipV := f.tileAttr&(1<<6) != 0
-		hiBank := f.tileAttr&(1<<3) != 0
-		f.data2 = f.getTileData(ppu, hiBank, f.tileLine, 1, f.tileAddress, f.signedIDs, flipV, 8)
+		f.data2 = f.getTileData(ppu, f.tileLine, 1, f.tileAddress, f.signedIDs, 8, f.tileAttr)
 		f.state = fsPush
 	case fsPush:
 		if f.fifo.len <= 8 {
-			flipH := f.tileAttr&(1<<5) != 0
-			prio := f.tileAttr&(1<<7) != 0
-			f.fillPixBuffer(flipH, prio, psBG, int(f.tileAttr&0x03))
+			f.fillPixBuffer(ppu, f.tileAttr, false)
 			f.fifo.enqueue(f.pixBuffer)
 			f.xOffset = (f.xOffset + 1) % 0x20
 			f.state = fsReadTileID
 		}
 	case fsReadSpriteTileID:
 		f.tileID = f.sprite.tileID
-		f.state = fsReadSpriteFlags
-	case fsReadSpriteFlags:
-		f.state = fsReadSpriteData1
-	case fsReadSpriteData1:
 		h := ppu.spriteHeight()
 		if h == 16 {
 			f.tileID &= 0xFE
 		}
-		f.data1 = f.getTileData(ppu, f.sprite.vramHi(), f.spriteLine, 0, 0x8000, false, f.sprite.flipV(), h)
+		f.state = fsReadSpriteFlags
+	case fsReadSpriteFlags:
+		f.state = fsReadSpriteData1
+	case fsReadSpriteData1:
+		f.data1 = f.getTileData(ppu, f.spriteLine, 0, 0x8000, false, ppu.spriteHeight(), f.sprite)
 		f.state = fsReadSpriteData2
 		break
 
 	case fsReadSpriteData2:
-		f.data2 = f.getTileData(ppu, f.sprite.vramHi(), f.spriteLine, 1, 0x8000, false, f.sprite.flipV(), ppu.spriteHeight())
+		f.data2 = f.getTileData(ppu, f.spriteLine, 1, 0x8000, false, ppu.spriteHeight(), f.sprite)
 		f.state = fsPushSprite
 		break
 
 	case fsPushSprite:
-		f.fillPixBuffer(f.sprite.flipH(), f.sprite.priority(), psObj, f.sprite.palette(ppu.mmu.GBC()))
+		f.fillPixBuffer(ppu, f.sprite, true)
 		f.fifo.setOverlay(f.pixBuffer, int(f.spriteOffset))
 		f.state = fsReadTileID
 		break
 	}
 }
 
-func (f *fetcher) getTileData(ppu *PPU, hiBank bool, line byte, byteNumber byte, tileDataAddress uint16, signed bool, flipV bool, tileHeight byte) byte {
-	if flipV {
+func (f *fetcher) getTileData(ppu *PPU, line byte, byteNumber byte, tileDataAddress uint16, signed bool, tileHeight byte, attrs renderAttr) byte {
+	if attrs.flipV() {
 		line = tileHeight - 1 - line
 	}
 
@@ -159,13 +187,13 @@ func (f *fetcher) getTileData(ppu *PPU, hiBank bool, line byte, byteNumber byte,
 		tileAddress = tileDataAddress + uint16(f.tileID)*0x10
 	}
 	addr := tileAddress + uint16(line*2+byteNumber)
-	if hiBank {
+	if attrs.vramHi() {
 		return ppu.vram1.Read(addr)
 	}
 	return ppu.vram0.Read(addr)
 }
 
-func (f *fetcher) fillPixBuffer(flipX bool, priority bool, src paletteSrc, pIdx int) {
+func (f *fetcher) fillPixBuffer(ppu *PPU, attr renderAttr, isObj bool) {
 	ifBitThen := func(src byte, bit byte, hiVal byte) byte {
 		if ((src >> bit) & 1) != 0 {
 			return hiVal
@@ -173,17 +201,22 @@ func (f *fetcher) fillPixBuffer(flipX bool, priority bool, src paletteSrc, pIdx 
 		return 0
 	}
 
-	for i := 7; i >= 0; i-- {
-		p := ifBitThen(f.data2, byte(i), 2) | ifBitThen(f.data1, byte(i), 1)
-		if priority {
-			p |= 0x04
-		}
-		if src == psBG {
-			p |= 0x80
-		}
-		p |= byte(pIdx&7) << 4
+	palIdx := attr.palIdx(!ppu.dmgMode()) & 0x07
+	if palIdx != 0 && ppu.dmgMode() {
+		fmt.Println("blub")
+	}
+	pixBase := byte(palIdx) << 4
+	if !isObj {
+		pixBase |= 0x80
+	}
+	if attr.prio() && (isObj || ppu.masterPriority()) {
+		pixBase |= 0x04
+	}
 
-		if flipX {
+	for i := 7; i >= 0; i-- {
+		p := pixBase | ifBitThen(f.data1, byte(i), 1) | ifBitThen(f.data2, byte(i), 2)
+
+		if attr.flipH() {
 			f.pixBuffer[i] = p
 		} else {
 			f.pixBuffer[7-i] = p

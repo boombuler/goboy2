@@ -51,7 +51,19 @@ type gbcPalette struct {
 	IndexAdr uint16
 	idx      int
 	autoInc  bool
-	data     [64]byte
+	data     [32]color.RGBA
+}
+
+func newGBCPalette(idxAddr uint16) *gbcPalette {
+	r := new(gbcPalette)
+	r.IndexAdr = idxAddr
+	for i := 0; i < 32; i++ {
+		r.data[i].A = 0xFF
+		r.data[i].R = 0xF8
+		r.data[i].G = 0xF8
+		r.data[i].B = 0xF8
+	}
+	return r
 }
 
 func (p *gbcPalette) Read(addr uint16) byte {
@@ -61,9 +73,20 @@ func (p *gbcPalette) Read(addr uint16) byte {
 			inc = 0x80
 		}
 		return byte(p.idx) | inc | 0x40
-	} else {
-		return p.data[p.idx]
 	}
+
+	hi := p.idx&1 != 0
+	col := p.data[p.idx>>1]
+
+	if hi {
+		G := (col.G >> 3) & 0x1F
+		B := (col.B >> 3) & 0x1F
+		return G>>3 | B<<2
+	}
+
+	R := (col.R >> 3) & 0x1F
+	G := (col.G >> 3) & 0x1F
+	return R | (G & 0x07 << 5)
 }
 
 func (p *gbcPalette) Write(addr uint16, val byte) {
@@ -71,7 +94,19 @@ func (p *gbcPalette) Write(addr uint16, val byte) {
 		p.idx = int(val & 0x3f)
 		p.autoInc = (val & (1 << 7)) != 0
 	} else {
-		p.data[p.idx] = val
+		hi := p.idx&1 == 1
+		idx := p.idx >> 1
+		if hi {
+			gVal := (val & 0x03) << 6
+			bVal := (val & 0x7C) << 1
+			p.data[idx].B = bVal
+			p.data[idx].G = gVal | (p.data[idx].G & 0x38)
+		}
+		rVal := (val & 0x1F) << 3
+		gVal := (val & 0xE0) >> 2
+		p.data[idx].R = rVal
+		p.data[idx].G = gVal | (p.data[idx].G & 0xC0)
+
 		if p.autoInc {
 			p.idx++
 		}
@@ -80,19 +115,9 @@ func (p *gbcPalette) Write(addr uint16, val byte) {
 
 func (p *gbcPalette) toColor(pIdx int, val byte) color.Color {
 	val &= 0x03
-	idx := (pIdx * 8) + int(val*2)
+	idx := (pIdx << 2) | int(val)
 
-	colorV := uint16(p.data[idx+1])<<8 | uint16(p.data[idx])
-	red := byte(colorV & 0x1F)
-	green := byte((colorV >> 5) & 0x1F)
-	blue := byte((colorV >> 10) & 0x1F)
-
-	return color.RGBA{
-		R: red << 3,
-		G: green << 3,
-		B: blue << 3,
-		A: 0xFF,
-	}
+	return p.data[idx]
 }
 
 var gbColors = []color.Color{

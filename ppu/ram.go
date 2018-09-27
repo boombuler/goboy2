@@ -65,7 +65,7 @@ func (sr oam) Write(addr uint16, val byte) {
 	}
 }
 
-func (sp spriteData) palette(gbc bool) int {
+func (sp spriteData) palIdx(gbc bool) int {
 	if gbc {
 		return int(sp.flags & 0x03)
 	}
@@ -85,6 +85,6 @@ func (sp spriteData) flipH() bool {
 func (sp spriteData) flipV() bool {
 	return (sp.flags & 0x40) != 0
 }
-func (sp spriteData) priority() bool {
+func (sp spriteData) prio() bool {
 	return (sp.flags & 0x80) != 0
 }

@@ -40,6 +40,7 @@ const (
 	AddrOBJECTPALETTE1 uint16 = 0xFF49
 	AddrWY             uint16 = 0xFF4A
 	AddrWX             uint16 = 0xFF4B
+	AddrLCDMODE        uint16 = 0xFF4C
 
 	AddrVBK   uint16 = 0xFF4F
 	AddrHDMA1 uint16 = 0xFF51

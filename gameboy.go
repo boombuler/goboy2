@@ -24,9 +24,9 @@ type GameBoy struct {
 }
 
 // NewGameBoy creates a new gameboy for the given cartridge
-func NewGameBoy(c *cartridge.Cartridge, screen chan<- *image.RGBA) *GameBoy {
+func NewGameBoy(c *cartridge.Cartridge, screen chan<- *image.RGBA, forceGBC bool) *GameBoy {
 	gb := new(GameBoy)
-	gb.MMU = mmu.New(c.GBC)
+	gb.MMU = mmu.New(c.GBC || forceGBC)
 	gb.apu = apu.New(gb.MMU)
 	gb.CPU = cpu.New(gb.MMU)
 	gb.ppu = ppu.New(gb.MMU, screen)

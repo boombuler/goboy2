@@ -4,14 +4,7 @@ import (
 	"image/color"
 )
 
-type paletteSrc byte
-
 // Fifo Format: BPPP _FCC (B = BG-Palette; P = Palette; F = Priority-Flag; C = Color)
-
-const (
-	psBG paletteSrc = iota
-	psObj
-)
 
 type pixelFiFo struct {
 	buffer   []byte
@@ -58,12 +51,13 @@ func (fifo *pixelFiFo) setOverlay(pixData []byte, offset int) {
 		p := pixData[j]
 		i := j - offset
 		bi := fifo.idx(i)
-		if !useBGPal(fifo.buffer[bi]) {
+		if !useBGPal(fifo.buffer[bi]) || colIdx(p) == 0 {
 			continue
 		}
-		bgPrio := useBGPal(fifo.buffer[bi]) && prio(fifo.buffer[bi])
+		//bgPrio :=  prio(fifo.buffer[bi])
 
-		priority := prio(p) || bgPrio
+		priority := prio(p) //|| bgPrio
+
 		if (priority && (colIdx(fifo.buffer[bi]) == 0)) || (!priority && (colIdx(p) != 0)) {
 			fifo.buffer[bi] = p
 		}

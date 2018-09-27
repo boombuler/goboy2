@@ -17,6 +17,7 @@ type Cartridge struct {
 	MBC
 	Title    string
 	GBC      bool
+	SGB      bool
 	ROMSize  uint
 	RAMSize  uint
 	Japanese bool
@@ -123,7 +124,7 @@ func Load(reader io.Reader, bf BatteryFactory) (*Cartridge, error) {
 	c := new(Cartridge)
 	c.Title = strings.TrimRight(string(rom[0x0134:0x0142]), "\x00")
 	c.GBC = (rom[0x0143] == 0x80) || (rom[0x0143] == 0xC0)
-
+	c.SGB = rom[0x0146] == 0x03 && rom[0x014B] == 0x33
 	c.ROMSize = 0x8000 << rom[0x0148]
 
 	switch rom[0x0149] {
