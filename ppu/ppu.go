@@ -75,7 +75,7 @@ func (p *PPU) state() ppuState {
 }
 
 func (p *PPU) dmgMode() bool {
-	return p.lcdMode == 4
+	return p.lcdMode == 4 || !p.mmu.GBC()
 }
 
 func (p *PPU) Read(addr uint16) byte {
