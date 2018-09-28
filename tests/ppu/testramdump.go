@@ -3,7 +3,6 @@ package main
 import (
 	"goboy2/mmu"
 	"goboy2/ppu"
-	"image"
 	"image/png"
 	"os"
 )
@@ -11,7 +10,7 @@ import (
 func main() {
 	mmu := mmu.New()
 
-	screen := make(chan *image.RGBA)
+	screen := make(chan *ppu.ScreenImage)
 	exit := make(chan struct{})
 
 	dump, _ := os.Open("vram.mem")
@@ -31,7 +30,7 @@ func main() {
 		}
 	}()
 
-	var img *image.RGBA
+	var img *ppu.ScreenImage
 	for i := 0; i < 5; i++ {
 		img = <-screen
 	}

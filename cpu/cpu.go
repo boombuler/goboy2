@@ -40,6 +40,7 @@ type CPU struct {
 	mmu mmu.MMU
 	registers
 
+	key1        *key1Reg
 	ime         bool
 	haltEnabled bool
 	err         error
@@ -56,11 +57,21 @@ type CPU struct {
 
 // New returns a new cpu connected with the given mmu
 func New(mmu mmu.MMU) *CPU {
-	return &CPU{
+	cpu := &CPU{
 		mmu:         mmu,
 		opCodeState: newState(),
 		rootOC:      nextOpCode(),
 	}
+	if mmu.GBC() {
+		cpu.key1 = new(key1Reg)
+		mmu.AddIODevice(cpu.key1, consts.AddrKEY1)
+	}
+	return cpu
+}
+
+// DoubleSpeed checks if the cpu is running in double speed mode.
+func (cpu *CPU) DoubleSpeed() bool {
+	return cpu.key1 != nil && cpu.key1.dblSpeed
 }
 
 func (cpu *CPU) setFlag(f flag, val bool) {

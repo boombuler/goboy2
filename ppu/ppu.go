@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"goboy2/consts"
 	"goboy2/mmu"
-	"image"
 )
 
 type PPU struct {
@@ -23,14 +22,14 @@ type PPU struct {
 	scrollX byte
 	winX    byte
 	winY    byte
-	bgPal   gbPalette
-	objPal  gbPalette
+	bgPal   *gbPalette
+	objPal  *gbPalette
 	bgcPal  *gbcPalette
 	obcPal  *gbcPalette
 	lcdMode byte
 
-	screenOut chan<- *image.RGBA
-	curScreen *image.RGBA
+	screenOut chan<- *ScreenImage
+	curScreen *ScreenImage
 
 	vram0  vRAM
 	vram1  vRAM
@@ -39,7 +38,7 @@ type PPU struct {
 }
 
 // New creates a new ppu and connects it to the given mmu
-func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
+func New(mmu mmu.MMU, screen chan<- *ScreenImage) *PPU {
 	gbc := mmu.GBC()
 	ppu := &PPU{
 		mmu:       mmu,
@@ -47,6 +46,8 @@ func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
 		oam:       newOAM(gbc),
 		screenOut: screen,
 		phaseIdx:  0,
+		bgPal:     new(gbPalette),
+		objPal:    new(gbPalette),
 		phases: []ppuPhase{
 			new(oamSearch),
 			newPixelTransfer(),
@@ -113,11 +114,11 @@ func (p *PPU) Read(addr uint16) byte {
 	case consts.AddrLYC:
 		return p.lyc
 	case consts.AddrBGP:
-		return byte(p.bgPal)
+		return byte(*p.bgPal)
 	case consts.AddrOBJECTPALETTE0:
-		return byte(p.objPal)
+		return byte(*p.objPal)
 	case consts.AddrOBJECTPALETTE1:
-		return byte(p.objPal >> 8)
+		return byte(*p.objPal >> 8)
 	case consts.AddrWY:
 		return p.winY
 	case consts.AddrWX:
@@ -177,11 +178,11 @@ func (p *PPU) Write(addr uint16, val byte) {
 	case consts.AddrLYC:
 		p.lyc = val
 	case consts.AddrBGP:
-		p.bgPal = gbPalette(val)
+		*p.bgPal = gbPalette(val)
 	case consts.AddrOBJECTPALETTE0:
-		p.objPal = (p.objPal & 0xFF00) | gbPalette(val)
+		*p.objPal = (*p.objPal & 0xFF00) | gbPalette(val)
 	case consts.AddrOBJECTPALETTE1:
-		p.objPal = (p.objPal & 0x00FF) | (gbPalette(val) << 8)
+		*p.objPal = (*p.objPal & 0x00FF) | (gbPalette(val) << 8)
 	case consts.AddrWY:
 		p.winY = val
 	case consts.AddrWX:

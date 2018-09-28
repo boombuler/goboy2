@@ -6,7 +6,20 @@ import (
 )
 
 func stop() opCode {
-	return nop() // Not Implemented...
+	return pipe(opCodeFn(func(c *CPU, s *ocState) {
+		if c.key1 != nil {
+			if c.key1.changeSpeed() {
+				s.pushB(1)
+				return
+			}
+		}
+		s.pushB(0)
+	}), opCodeFn(func(c *CPU, s *ocState) {
+		stopAlreadyHandled := s.popB() != 0
+		if !stopAlreadyHandled {
+			// TODO: implement original STOP
+		}
+	}))
 }
 
 func halt() opCode {

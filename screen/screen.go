@@ -3,7 +3,6 @@ package screen
 import (
 	"goboy2/consts"
 	"goboy2/ppu"
-	"image"
 	"log"
 	"runtime"
 	"time"
@@ -22,7 +21,7 @@ type KeyEvent struct {
 
 type Screen struct {
 	stop   chan struct{}
-	render chan *image.RGBA
+	render chan *ppu.ScreenImage
 	input  chan interface{}
 }
 
@@ -31,7 +30,7 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	screen := &Screen{
 		stop:   make(chan struct{}),
-		render: make(chan *image.RGBA),
+		render: make(chan *ppu.ScreenImage),
 		input:  make(chan interface{}),
 	}
 	wnd, err := sdl.CreateWindow("GoBoy2",
@@ -104,13 +103,13 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 	}
 }
 
-func imgToTex(img *image.RGBA, renderer *sdl.Renderer) (tex *sdl.Texture, dx, dy int32) {
+func imgToTex(img *ppu.ScreenImage, renderer *sdl.Renderer) (tex *sdl.Texture, dx, dy int32) {
 	bnds := img.Bounds()
 
 	sdlImg, err := sdl.CreateRGBSurfaceFrom(
-		unsafe.Pointer(&img.Pix[0]),
+		unsafe.Pointer(&(img[0])),
 		int32(bnds.Dx()), int32(bnds.Dy()),
-		32, img.Stride,
+		24, consts.DisplayWidth*3,
 		0, 0, 0, 0)
 	if err != nil {
 		log.Fatal(err)
@@ -138,6 +137,6 @@ func (s *Screen) Stop() {
 	close(s.stop)
 }
 
-func (s *Screen) GetOutputChannel() chan<- *image.RGBA {
+func (s *Screen) GetOutputChannel() chan<- *ppu.ScreenImage {
 	return s.render
 }

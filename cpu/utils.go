@@ -47,6 +47,42 @@ func (po *pipedOpcode) TakesCycle() bool {
 	return po.sub.TakesCycle()
 }
 
+func joinOpCodeFns(opCodeFns []opCodeFn) opCodeFn {
+	length := len(opCodeFns)
+	return opCodeFn(func(c *CPU, state *ocState) {
+		for i := 0; i < length; i++ {
+			opCodeFns[i](c, state)
+		}
+	})
+}
+
+func combineOpCodeFns(opCodes []opCode) []opCode {
+	newOpCodes := make([]opCode, 0)
+
+	i := 0
+	for i < len(opCodes) {
+		cur := opCodes[i]
+		if ocf, ok := cur.(opCodeFn); ok {
+			fns := []opCodeFn{ocf}
+			for j := i + 1; j < len(opCodes); j++ {
+				if ocf, ok = opCodes[j].(opCodeFn); ok {
+					fns = append(fns, ocf)
+				} else {
+					break
+				}
+			}
+			if len(fns) > 1 {
+				newOpCodes = append(newOpCodes, joinOpCodeFns(fns))
+				i = i + len(fns)
+				continue
+			}
+		}
+		newOpCodes = append(newOpCodes, cur)
+		i++
+	}
+	return newOpCodes
+}
+
 func pipe(opCodes ...opCode) opCode {
 	// flattern piped opcodes:
 	newCodes := make([]opCode, 0)
@@ -56,6 +92,10 @@ func pipe(opCodes ...opCode) opCode {
 		} else {
 			newCodes = append(newCodes, oc)
 		}
+	}
+	newCodes = combineOpCodeFns(newCodes)
+	if len(newCodes) == 1 {
+		return newCodes[0]
 	}
 
 	return &pipedOpcode{
@@ -142,13 +182,13 @@ func paramW() opCode {
 
 type opCodeTable [256]opCode
 
-func (t opCodeTable) Exec(cpu *CPU, state *ocState) {}
-func (t opCodeTable) Next(state *ocState) opCode {
+func (t *opCodeTable) Exec(cpu *CPU, state *ocState) {}
+func (t *opCodeTable) Next(state *ocState) opCode {
 	x := state.popB()
 	state.pushB(x)
 	return t[x]
 }
 
-func (t opCodeTable) TakesCycle() bool {
+func (t *opCodeTable) TakesCycle() bool {
 	return false
 }

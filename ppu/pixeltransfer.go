@@ -70,7 +70,7 @@ func (pt *pixelTransfer) step(ppu *PPU) bool {
 	}
 
 	color := pt.fifo.dequeue(ppu)
-	ppu.curScreen.Set(int(pt.curX), int(ppu.ly), color)
+	ppu.curScreen[int(ppu.ly)*consts.DisplayWidth+int(pt.curX)] = color
 	if pt.curX++; int(pt.curX) == consts.DisplayWidth {
 		return true
 	}

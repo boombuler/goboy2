@@ -4,10 +4,10 @@ func init() {
 	ld(sp.Write(), paramW())
 }
 
-func createOpCodeTable() opCodeTable {
+func createOpCodeTable() *opCodeTable {
 	extTbl := createExtendedOpCodeTable()
 
-	return opCodeTable{
+	return &opCodeTable{
 		/* 0x00 */ labeled{"NOP", nop()},
 		/* 0x01 */ labeled{"LD BC, nn", ld(bc.Write(), paramW())},
 		/* 0x02 */ labeled{"LD (BC), A", ld(bc.Deref().Write(), a.Read())},
@@ -273,8 +273,8 @@ func nextOpCode() opCode {
 	return pipe(paramB(), opCodes)
 }
 
-func createExtendedOpCodeTable() opCodeTable {
-	return opCodeTable{
+func createExtendedOpCodeTable() *opCodeTable {
+	return &opCodeTable{
 		/* 0x00 */ labeled{"RLC B", rlc(b)},
 		/* 0x01 */ labeled{"RLC C", rlc(c)},
 		/* 0x02 */ labeled{"RLC D", rlc(d)},

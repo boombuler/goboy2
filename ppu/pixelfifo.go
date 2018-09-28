@@ -1,9 +1,5 @@
 package ppu
 
-import (
-	"image/color"
-)
-
 // Fifo Format: BPPP _FCC (B = BG-Palette; P = Palette; F = Priority-Flag; C = Color)
 
 type pixelFiFo struct {
@@ -13,10 +9,12 @@ type pixelFiFo struct {
 	startIdx int
 }
 
+const fifoBufferLen = 16
+
 func newPixelFiFo() *pixelFiFo {
 	return &pixelFiFo{
-		buffer: make([]byte, 16),
-		oamIdx: make([]int, 16),
+		buffer: make([]byte, fifoBufferLen),
+		oamIdx: make([]int, fifoBufferLen),
 	}
 }
 
@@ -85,9 +83,9 @@ func (ppu *PPU) usePixel(curPix, newPix byte, curOAMIdx, newOAMIdx int) bool {
 	return curOAMIdx > newOAMIdx
 }
 
-func (fifo *pixelFiFo) dequeue(ppu *PPU) color.Color {
+func (fifo *pixelFiFo) dequeue(ppu *PPU) RGB {
 	b := fifo.buffer[fifo.idx(0)]
-	fifo.startIdx = (fifo.startIdx + 1) % len(fifo.buffer)
+	fifo.startIdx = (fifo.startIdx + 1) % fifoBufferLen
 	fifo.len--
 
 	pix := colIdx(b)

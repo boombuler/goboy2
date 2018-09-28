@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"goboy2/cartridge"
-	"image"
+	"goboy2/ppu"
 )
 
-func newNULLScreen(exitChan <-chan struct{}) chan<- *image.RGBA {
-	screen := make(chan *image.RGBA)
+func newNULLScreen(exitChan <-chan struct{}) chan<- *ppu.ScreenImage {
+	screen := make(chan *ppu.ScreenImage)
 	go func() {
 		for {
 			select {

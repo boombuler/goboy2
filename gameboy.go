@@ -10,7 +10,6 @@ import (
 	"goboy2/ppu"
 	"goboy2/serial"
 	"goboy2/timer"
-	"image"
 )
 
 type GameBoy struct {
@@ -24,7 +23,7 @@ type GameBoy struct {
 }
 
 // NewGameBoy creates a new gameboy for the given cartridge
-func NewGameBoy(c *cartridge.Cartridge, screen chan<- *image.RGBA, forceGBC bool) *GameBoy {
+func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, forceGBC bool) *GameBoy {
 	gb := new(GameBoy)
 	gb.MMU = mmu.New(c.GBC || forceGBC)
 	gb.apu = apu.New(gb.MMU)
@@ -42,6 +41,7 @@ func (gb *GameBoy) Run(exitChan <-chan struct{}) {
 	if err := gb.apu.Start(); err != nil {
 		panic(err)
 	}
+	dsTick := false
 	for {
 		select {
 		case _, _ = <-exitChan:
@@ -53,8 +53,13 @@ func (gb *GameBoy) Run(exitChan <-chan struct{}) {
 			gb.MMU.Step()
 			gb.timer.Step()
 			gb.serial.Step()
-			gb.apu.Step()
-			gb.ppu.Step()
+			if !dsTick {
+				gb.apu.Step()
+				gb.ppu.Step()
+				dsTick = gb.CPU.DoubleSpeed()
+			} else {
+				dsTick = false
+			}
 		}
 	}
 }
