@@ -13,22 +13,24 @@ import (
 )
 
 type GameBoy struct {
-	MMU    mmu.MMU
-	CPU    *cpu.CPU
-	ppu    *ppu.PPU
-	apu    *apu.APU
-	timer  *timer.Timer
-	kb     *input.Keyboard
-	serial *serial.Serial
+	exitChan <-chan struct{}
+	MMU      mmu.MMU
+	CPU      *cpu.CPU
+	ppu      *ppu.PPU
+	apu      *apu.APU
+	timer    *timer.Timer
+	kb       *input.Keyboard
+	serial   *serial.Serial
 }
 
 // NewGameBoy creates a new gameboy for the given cartridge
-func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, forceGBC bool) *GameBoy {
+func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, forceGBC bool, exitChan <-chan struct{}) *GameBoy {
 	gb := new(GameBoy)
+	gb.exitChan = exitChan
 	gb.MMU = mmu.New(c.GBC || forceGBC)
 	gb.apu = apu.New(gb.MMU)
 	gb.CPU = cpu.New(gb.MMU)
-	gb.ppu = ppu.New(gb.MMU, screen)
+	gb.ppu = ppu.New(gb.MMU, screen, exitChan)
 	gb.timer = timer.New(gb.MMU)
 	gb.serial = serial.New(gb.MMU)
 	gb.kb = input.NewKeyboard(gb.MMU)
@@ -37,14 +39,14 @@ func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, forceGBC
 }
 
 // Run starts the emulation until the exit chan is closed.
-func (gb *GameBoy) Run(exitChan <-chan struct{}) {
+func (gb *GameBoy) Run() {
 	if err := gb.apu.Start(); err != nil {
 		panic(err)
 	}
 	dsTick := false
 	for {
 		select {
-		case _, _ = <-exitChan:
+		case _, _ = <-gb.exitChan:
 			gb.apu.Stop()
 			return
 		default:

@@ -38,8 +38,10 @@ type PPU struct {
 }
 
 // New creates a new ppu and connects it to the given mmu
-func New(mmu mmu.MMU, screen chan<- *ScreenImage) *PPU {
+func New(mmu mmu.MMU, screen chan<- *ScreenImage, exitChan <-chan struct{}) *PPU {
 	gbc := mmu.GBC()
+	screen = dropFrames(screen, exitChan)
+
 	ppu := &PPU{
 		mmu:       mmu,
 		vram0:     newVRAM(),

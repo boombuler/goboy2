@@ -19,13 +19,15 @@ func FreeScreen(img *ScreenImage) {
 	screenPool.Put(img)
 }
 
-func dropFrames(output chan<- *ScreenImage) chan<- *ScreenImage {
+func dropFrames(output chan<- *ScreenImage, exitChan <-chan struct{}) chan<- *ScreenImage {
 	input := make(chan *ScreenImage)
 
 	go func() {
 		lastImg := <-input
 		for {
 			select {
+			case _, _ = <-exitChan:
+				return
 			case img := <-input:
 				FreeScreen(lastImg)
 				lastImg = img

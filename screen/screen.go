@@ -53,7 +53,6 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 	defer renderer.Destroy()
 	renderer.SetLogicalSize(winWidth, winHeight)
 	drawImageOnRenderer(nil, 0, 0, renderer)
-	defer close(screen.render)
 
 	go mainFn(screen, screen.input, screen.stop)
 
