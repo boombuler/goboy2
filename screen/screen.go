@@ -108,12 +108,11 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 
 func imgToTex(img *ppu.ScreenImage, renderer *sdl.Renderer) (tex *sdl.Texture, dx, dy int32) {
 	bnds := img.Bounds()
-
 	sdlImg, err := sdl.CreateRGBSurfaceFrom(
 		unsafe.Pointer(&(img[0])),
 		int32(bnds.Dx()), int32(bnds.Dy()),
 		24, consts.DisplayWidth*3,
-		0, 0, 0, 0)
+		0x0000FF, 0x00FF00, 0xFF0000, 0)
 	if err != nil {
 		log.Fatal(err)
 	}
