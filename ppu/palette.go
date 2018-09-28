@@ -10,6 +10,8 @@ import (
 
 var emptyScreen = newScreen()
 
+const colorShift = 3 // Amount to shift the gameboy color to the right, for RGB values...
+
 var screenPool = &sync.Pool{
 	New: func() interface{} {
 		return image.NewRGBA(image.Rect(0, 0, consts.DisplayWidth, consts.DisplayHeight))
@@ -83,12 +85,24 @@ func (p *gbcPalette) PrintRam() {
 }
 
 func getColorBytes(col color.RGBA) (hi byte, lo byte) {
-	R := (col.R >> 3) & 0x1F
-	G := (col.G >> 3) & 0x1F
-	B := (col.B >> 3) & 0x1F
+	R := (col.R >> colorShift) & 0x1F
+	G := (col.G >> colorShift) & 0x1F
+	B := (col.B >> colorShift) & 0x1F
 	hi = G>>3 | B<<2
 	lo = R | (G & 0x07 << 5)
 	return
+}
+
+func setColorBytes(hi, lo byte) color.RGBA {
+	r := lo & 0x1F
+	g := ((lo & 0xE0) >> 5) | ((hi & 0x03) << 3)
+	b := (hi >> 2) & 0x1F
+	return color.RGBA{
+		R: r << colorShift,
+		G: g << colorShift,
+		B: b << colorShift,
+		A: 0xFF,
+	}
 }
 
 func (p *gbcPalette) Read(addr uint16) byte {
@@ -115,16 +129,11 @@ func (p *gbcPalette) Write(addr uint16, val byte) {
 	} else {
 		hi := p.idx&1 == 1
 		idx := p.idx >> 1
+		pHi, pLo := getColorBytes(p.data[idx])
 		if hi {
-			gVal := (val & 0x03) << 6
-			bVal := (val & 0x7C) << 1
-			p.data[idx].B = bVal
-			p.data[idx].G = gVal | (p.data[idx].G & 0x38)
+			p.data[idx] = setColorBytes(val, pLo)
 		} else {
-			rVal := (val & 0x1F) << 3
-			gVal := (val & 0xE0) >> 2
-			p.data[idx].R = rVal
-			p.data[idx].G = gVal | (p.data[idx].G & 0xC0)
+			p.data[idx] = setColorBytes(pHi, val)
 		}
 
 		if p.autoInc {

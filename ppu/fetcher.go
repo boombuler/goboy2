@@ -39,9 +39,9 @@ type tileAttr byte
 
 func (ta tileAttr) palIdx(gbc bool) int {
 	if gbc {
-		return 0
+		return int(ta) & 0x07
 	}
-	return int(ta) & 0x07
+	return 0
 }
 func (ta tileAttr) vramHi() bool {
 	return ta&(1<<3) != 0
