@@ -18,6 +18,9 @@ type vramDMA struct {
 }
 
 func (dma *vramDMA) Step(p *PPU) {
+	if !dma.running {
+		return
+	}
 	if ppus := p.state(); dma.ppuState != p.state() {
 		if ppus == sHBlank {
 			dma.hblankHandled = false
@@ -48,9 +51,7 @@ func (dma *vramDMA) Step(p *PPU) {
 }
 
 func (dma *vramDMA) active(p *PPU) bool {
-	if !dma.running {
-		return false
-	} else if dma.hdmaMode && ((!dma.hblankHandled && dma.ppuState == sHBlank) || !p.lcdEnabled()) {
+	if dma.hdmaMode && ((!dma.hblankHandled && dma.ppuState == sHBlank) || !p.lcdEnabled()) {
 		return true
 	}
 	return !dma.hdmaMode
@@ -103,5 +104,7 @@ func (dma *vramDMA) startTransfer(ctrl byte) {
 		dma.src = dma.hdma12 & 0xFFF0
 		dma.dest = (dma.hdma34 & 0x1FF0) | 0x8000
 		dma.timer = 0
+		dma.hblankHandled = false
+		dma.ppuState = sOAMRead // Any other then HBlank...
 	}
 }
