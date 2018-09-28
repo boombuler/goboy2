@@ -59,7 +59,27 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 	var texture *sdl.Texture
 	var dx, dy int32
 
+	handleEvents := func() {
+		switch ev := sdl.PollEvent(); e := ev.(type) {
+		case *sdl.QuitEvent:
+			close(screen.stop)
+		case *sdl.KeyboardEvent:
+			if e.Type == sdl.KEYUP {
+				if e.Keysym.Sym == sdl.K_ESCAPE {
+					close(screen.stop)
+				} else {
+					screen.input <- KeyEvent{false, e.Keysym.Sym}
+				}
+			} else {
+				screen.input <- KeyEvent{true, e.Keysym.Sym}
+			}
+		default:
+			time.Sleep(1 * time.Millisecond)
+		}
+	}
+
 	for {
+		handleEvents() // Handle events at least once per frame...
 		select {
 		case _, _ = <-screen.stop:
 			return
@@ -81,23 +101,7 @@ func Main(mainFn func(s *Screen, input <-chan interface{}, exitChan <-chan struc
 
 			drawImageOnRenderer(texture, dx, dy, renderer)
 		default:
-			switch ev := sdl.PollEvent(); e := ev.(type) {
-			case *sdl.QuitEvent:
-				close(screen.stop)
-			case *sdl.KeyboardEvent:
-				if e.Type == sdl.KEYUP {
-					if e.Keysym.Sym == sdl.K_ESCAPE {
-						close(screen.stop)
-					} else {
-						screen.input <- KeyEvent{false, e.Keysym.Sym}
-					}
-				} else {
-					screen.input <- KeyEvent{true, e.Keysym.Sym}
-				}
-			default:
-				//drawImageOnRenderer(texture, dx, dy, renderer)
-				time.Sleep(1 * time.Millisecond)
-			}
+			handleEvents()
 		}
 	}
 }
