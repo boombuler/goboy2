@@ -1,6 +1,7 @@
 package ppu
 
 import (
+	"fmt"
 	"goboy2/consts"
 	"image"
 	"image/color"
@@ -66,6 +67,30 @@ func newGBCPalette(idxAddr uint16) *gbcPalette {
 	return r
 }
 
+func (p *gbcPalette) PrintRam() {
+	for i, c := range p.data {
+		hi, lo := getColorBytes(c)
+		if i%4 == 0 {
+			fmt.Printf("%d: ", i/4)
+		}
+
+		if i%4 == 3 {
+			fmt.Printf("%02X%02X\n", hi, lo)
+		} else {
+			fmt.Printf("%02X%02X ", hi, lo)
+		}
+	}
+}
+
+func getColorBytes(col color.RGBA) (hi byte, lo byte) {
+	R := (col.R >> 3) & 0x1F
+	G := (col.G >> 3) & 0x1F
+	B := (col.B >> 3) & 0x1F
+	hi = G>>3 | B<<2
+	lo = R | (G & 0x07 << 5)
+	return
+}
+
 func (p *gbcPalette) Read(addr uint16) byte {
 	if addr == p.IndexAdr {
 		inc := byte(0x00)
@@ -76,17 +101,11 @@ func (p *gbcPalette) Read(addr uint16) byte {
 	}
 
 	hi := p.idx&1 != 0
-	col := p.data[p.idx>>1]
-
+	cHi, cLo := getColorBytes(p.data[p.idx>>1])
 	if hi {
-		G := (col.G >> 3) & 0x1F
-		B := (col.B >> 3) & 0x1F
-		return G>>3 | B<<2
+		return cHi
 	}
-
-	R := (col.R >> 3) & 0x1F
-	G := (col.G >> 3) & 0x1F
-	return R | (G & 0x07 << 5)
+	return cLo
 }
 
 func (p *gbcPalette) Write(addr uint16, val byte) {
@@ -101,11 +120,12 @@ func (p *gbcPalette) Write(addr uint16, val byte) {
 			bVal := (val & 0x7C) << 1
 			p.data[idx].B = bVal
 			p.data[idx].G = gVal | (p.data[idx].G & 0x38)
+		} else {
+			rVal := (val & 0x1F) << 3
+			gVal := (val & 0xE0) >> 2
+			p.data[idx].R = rVal
+			p.data[idx].G = gVal | (p.data[idx].G & 0xC0)
 		}
-		rVal := (val & 0x1F) << 3
-		gVal := (val & 0xE0) >> 2
-		p.data[idx].R = rVal
-		p.data[idx].G = gVal | (p.data[idx].G & 0xC0)
 
 		if p.autoInc {
 			p.idx++
@@ -114,10 +134,7 @@ func (p *gbcPalette) Write(addr uint16, val byte) {
 }
 
 func (p *gbcPalette) toColor(pIdx int, val byte) color.Color {
-	val &= 0x03
-	idx := (pIdx << 2) | int(val)
-
-	return p.data[idx]
+	return p.data[(pIdx<<2)|int(val&0x03)]
 }
 
 var gbColors = []color.Color{

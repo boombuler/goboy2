@@ -1,6 +1,7 @@
 package ppu
 
 import (
+	"fmt"
 	"goboy2/consts"
 	"goboy2/mmu"
 	"image"
@@ -68,6 +69,14 @@ func New(mmu mmu.MMU, screen chan<- *image.RGBA) *PPU {
 		mmu.AddIODevice(ppu, consts.AddrVBK, consts.AddrLCDMODE)
 	}
 	return ppu
+}
+
+func (p *PPU) PrintPalettes() {
+	fmt.Println("BG:")
+	p.bgcPal.PrintRam()
+	fmt.Println()
+	fmt.Println("Obj:")
+	p.obcPal.PrintRam()
 }
 
 func (p *PPU) state() ppuState {
