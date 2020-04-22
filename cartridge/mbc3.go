@@ -1,7 +1,11 @@
 package cartridge
 
+import (
+	"io"
+)
+
 type mbc3 struct {
-	battery    Battery
+	battery    BatteryStream
 	rombanks   []rombank
 	activerom  int
 	rambanks   []rambank
@@ -12,7 +16,9 @@ type mbc3 struct {
 
 func createMBC3(c *Cartridge, data []byte, hasTimer bool, bat Battery) (MBC, error) {
 	m := new(mbc3)
-	m.battery = bat
+	if bat != nil {
+		m.battery = bat.Open()
+	}
 	for rs := c.ROMSize; rs > 0; rs -= rombankSize {
 		m.rombanks = append(m.rombanks, rombank(data[c.ROMSize-rs:c.ROMSize-rs+rombankSize]))
 	}
@@ -82,32 +88,32 @@ func (m *mbc3) Write(addr uint16, value byte) {
 
 func (m *mbc3) Shutdown() {
 	m.saveRAM()
+	m.battery.Close()
+	m.battery = nil
 }
 func (m *mbc3) saveRAM() {
 	if m.battery != nil && (m.hasRam() || m.rtc != nil) {
-		w := m.battery.Open()
+		m.battery.Seek(0, io.SeekStart)
 		if m.hasRam() {
 			for i := 0; i < len(m.rambanks); i++ {
-				w.Write(m.rambanks[i][:])
+				m.battery.Write(m.rambanks[i][:])
 			}
 		}
 		if m.rtc != nil {
-			m.rtc.Dump(w)
+			m.rtc.Dump(m.battery)
 		}
-		w.Close()
 	}
 }
 func (m *mbc3) loadRAM() {
-	if m.battery != nil && m.battery.HasData() && (m.hasRam() || m.rtc != nil) {
-		r := m.battery.Open()
+	if m.battery != nil && (m.hasRam() || m.rtc != nil) {
+		m.battery.Seek(0, io.SeekStart)
 		if m.hasRam() {
 			for i := 0; i < len(m.rambanks); i++ {
-				r.Read(m.rambanks[i][:])
+				m.battery.Read(m.rambanks[i][:])
 			}
 		}
 		if m.rtc != nil {
-			m.rtc.Load(r)
+			m.rtc.Load(m.battery)
 		}
-		r.Close()
 	}
 }

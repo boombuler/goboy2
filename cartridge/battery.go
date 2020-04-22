@@ -8,8 +8,15 @@ import (
 )
 
 type Battery interface {
-	Open() io.ReadWriteCloser
+	Open() BatteryStream
 	HasData() bool
+}
+
+type BatteryStream interface {
+	io.Reader
+	io.Writer
+	io.Seeker
+	io.Closer
 }
 
 type BatteryFactory func() Battery
@@ -27,7 +34,7 @@ func (bf BatteryFile) HasData() bool {
 	return !os.IsNotExist(err)
 }
 
-func (bf BatteryFile) Open() io.ReadWriteCloser {
+func (bf BatteryFile) Open() BatteryStream {
 	fn := string(bf)
 	if _, err := os.Stat(fn); !os.IsNotExist(err) {
 		ramFile, err := os.OpenFile(fn, os.O_RDWR, os.ModeExclusive)

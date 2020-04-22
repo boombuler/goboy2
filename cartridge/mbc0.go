@@ -2,13 +2,14 @@ package cartridge
 
 import (
 	"fmt"
+	"io"
 )
 
 type mbc0 struct {
 	rom     []rombank
 	ram     rambank
 	hasRam  bool
-	battery Battery
+	battery BatteryStream
 }
 
 func createMBC0(c *Cartridge, data []byte, hasRam bool, bat Battery) (MBC, error) {
@@ -20,8 +21,10 @@ func createMBC0(c *Cartridge, data []byte, hasRam bool, bat Battery) (MBC, error
 			data[:rombankSize],
 			data[rombankSize : rombankSize*2],
 		},
-		hasRam:  hasRam,
-		battery: bat,
+		hasRam: hasRam,
+	}
+	if bat != nil {
+		m.battery = bat.Open()
 	}
 	m.loadRAM()
 	return m, nil
@@ -43,20 +46,20 @@ func (m *mbc0) Write(addr uint16, value byte) {
 
 func (m *mbc0) saveRAM() {
 	if m.battery != nil && m.hasRam {
-		f := m.battery.Open()
-		f.Write(m.ram[:])
-		f.Close()
+		m.battery.Seek(0, io.SeekStart)
+		m.battery.Write(m.ram[:])
 	}
 }
 
 func (m *mbc0) Shutdown() {
 	m.saveRAM()
+	m.battery.Close()
+	m.battery = nil
 }
 
 func (m *mbc0) loadRAM() {
-	if m.battery != nil && m.hasRam && m.battery.HasData() {
-		r := m.battery.Open()
-		r.Read(m.ram[:])
-		r.Close()
+	if m.battery != nil && m.hasRam {
+		m.battery.Seek(0, io.SeekStart)
+		m.battery.Read(m.ram[:])
 	}
 }

@@ -1,7 +1,11 @@
 package cartridge
 
+import (
+	"io"
+)
+
 type mbc5 struct {
-	battery   Battery
+	battery   BatteryStream
 	rombanks  []rombank
 	activerom int
 
@@ -12,7 +16,9 @@ type mbc5 struct {
 
 func createMBC5(c *Cartridge, data []byte, bat Battery) (MBC, error) {
 	m := new(mbc5)
-	m.battery = bat
+	if bat != nil {
+		m.battery = bat.Open()
+	}
 	for rs := c.ROMSize; rs > 0; rs -= rombankSize {
 		m.rombanks = append(m.rombanks, rombank(data[c.ROMSize-rs:c.ROMSize-rs+rombankSize]))
 	}
@@ -76,24 +82,24 @@ func (m *mbc5) Write(addr uint16, value byte) {
 
 func (m *mbc5) Shutdown() {
 	m.saveRAM()
+	m.battery.Close()
+	m.battery = nil
 }
 
 func (m *mbc5) saveRAM() {
 	if m.battery != nil && m.hasRam() {
-		w := m.battery.Open()
+		m.battery.Seek(0, io.SeekStart)
 		for i := 0; i < len(m.rambanks); i++ {
-			w.Write(m.rambanks[i][:])
+			m.battery.Write(m.rambanks[i][:])
 		}
-		w.Close()
 	}
 }
 
 func (m *mbc5) loadRAM() {
-	if m.battery != nil && m.battery.HasData() && m.hasRam() {
-		r := m.battery.Open()
+	if m.battery != nil && m.hasRam() {
+		m.battery.Seek(0, io.SeekStart)
 		for i := 0; i < len(m.rambanks); i++ {
-			r.Read(m.rambanks[i][:])
+			m.battery.Read(m.rambanks[i][:])
 		}
-		r.Close()
 	}
 }
