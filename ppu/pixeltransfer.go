@@ -36,7 +36,7 @@ func (pt *pixelTransfer) step(ppu *PPU) bool {
 			pt.dropped++
 			return false
 		}
-		if !pt.wnd && ppu.useWnd() && ppu.ly >= ppu.winY && pt.curX == ppu.winX-7 {
+		if !pt.wnd && ppu.useWnd() && ppu.ly >= ppu.winY && (pt.curX + 7) >= ppu.winX {
 			pt.wnd = true
 			winX := uint16((int(pt.curX) - int(ppu.winX) + 7) / 8)
 			winY := int(ppu.ly) - int(ppu.winY)
