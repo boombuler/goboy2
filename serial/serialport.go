@@ -72,10 +72,11 @@ func (s *Serial) Write(addr uint16, val byte) {
 func (s *Serial) Step() {
 	if s.transferInProgress {
 		if s.divider++; s.divider >= serialTickDiv {
-			s.transferInProgress = false
+			s.divider = 0
 			var ok bool
 			s.sb, ok = s.transfer.Exchange(s.sb)
 			if ok {
+				s.transferInProgress = false
 				s.mmu.RequestInterrupt(mmu.IRQSerial)
 			}
 		}
