@@ -23,13 +23,13 @@ const (
 )
 
 type SerialTransfer interface {
-	Exchange(val byte) byte
+	Exchange(val byte) (byte, bool)
 }
 
 type nullTransfer struct{}
 
-func (n nullTransfer) Exchange(val byte) byte {
-	return 0
+func (n nullTransfer) Exchange(val byte) (byte, bool) {
+	return 0, false
 }
 
 func New(mmu mmu.MMU) *Serial {
@@ -73,8 +73,11 @@ func (s *Serial) Step() {
 	if s.transferInProgress {
 		if s.divider++; s.divider >= serialTickDiv {
 			s.transferInProgress = false
-			s.sb = s.transfer.Exchange(s.sb)
-			s.mmu.RequestInterrupt(mmu.IRQSerial)
+			var ok bool
+			s.sb, ok = s.transfer.Exchange(s.sb)
+			if ok {
+				s.mmu.RequestInterrupt(mmu.IRQSerial)
+			}
 		}
 	}
 }
