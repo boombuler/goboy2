@@ -7,6 +7,7 @@ type opCode interface {
 }
 
 type labeledOpCode interface {
+	opCode
 	Label() string
 }
 
@@ -15,7 +16,7 @@ type labeled struct {
 	opCode
 }
 
-func (n labeled) Name() string {
+func (n labeled) Label() string {
 	return n.name
 }
 
