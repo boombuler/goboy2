@@ -53,8 +53,10 @@ func (m *mbc0) saveRAM() {
 
 func (m *mbc0) Shutdown() {
 	m.saveRAM()
-	m.battery.Close()
-	m.battery = nil
+	if m.battery != nil {
+		m.battery.Close()
+		m.battery = nil
+	}
 }
 
 func (m *mbc0) loadRAM() {
