@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"goboy2/cartridge"
-	"goboy2/ppu"
+	"github.com/boombuler/goboy2/cartridge"
+	"github.com/boombuler/goboy2/ppu"
 )
 
 func newNULLScreen(exitChan <-chan struct{}) chan<- *ppu.ScreenImage {

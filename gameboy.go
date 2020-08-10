@@ -1,15 +1,15 @@
 package main
 
 import (
-	"goboy2/apu"
-	"goboy2/cartridge"
-	"goboy2/consts"
-	"goboy2/cpu"
-	"goboy2/input"
-	"goboy2/mmu"
-	"goboy2/ppu"
-	"goboy2/serial"
-	"goboy2/timer"
+	"github.com/boombuler/goboy2/apu"
+	"github.com/boombuler/goboy2/cartridge"
+	"github.com/boombuler/goboy2/consts"
+	"github.com/boombuler/goboy2/cpu"
+	"github.com/boombuler/goboy2/input"
+	"github.com/boombuler/goboy2/mmu"
+	"github.com/boombuler/goboy2/ppu"
+	"github.com/boombuler/goboy2/serial"
+	"github.com/boombuler/goboy2/timer"
 )
 
 type GameBoy struct {

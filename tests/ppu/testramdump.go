@@ -1,8 +1,8 @@
 package main
 
 import (
-	"goboy2/mmu"
-	"goboy2/ppu"
+	"github.com/boombuler/goboy2/mmu"
+	"github.com/boombuler/goboy2/ppu"
 	"image/png"
 	"os"
 )

@@ -1,7 +1,7 @@
 package ppu
 
 import (
-	"goboy2/consts"
+	"github.com/boombuler/goboy2/consts"
 	"image"
 	"image/color"
 )

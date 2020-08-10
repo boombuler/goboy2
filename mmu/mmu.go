@@ -1,6 +1,6 @@
 package mmu
 
-import "goboy2/consts"
+import "github.com/boombuler/goboy2/consts"
 
 type MMU interface {
 	IODevice

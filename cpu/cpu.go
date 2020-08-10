@@ -2,8 +2,8 @@ package cpu
 
 import (
 	"fmt"
-	"goboy2/consts"
-	"goboy2/mmu"
+	"github.com/boombuler/goboy2/consts"
+	"github.com/boombuler/goboy2/mmu"
 )
 
 // SetRegisterValues set all Register values for the cpu

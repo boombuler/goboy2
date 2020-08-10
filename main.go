@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"goboy2/cartridge"
-	"goboy2/screen"
+	"github.com/boombuler/goboy2/cartridge"
+	"github.com/boombuler/goboy2/screen"
 	"log"
 	"os"
 	"path/filepath"

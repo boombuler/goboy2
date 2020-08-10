@@ -1,8 +1,8 @@
 package timer
 
 import (
-	"goboy2/consts"
-	"goboy2/mmu"
+	"github.com/boombuler/goboy2/consts"
+	"github.com/boombuler/goboy2/mmu"
 )
 
 var clockSpeedBit = [4]uint16{1 << 9, 1 << 3, 1 << 5, 1 << 7}

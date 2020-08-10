@@ -1,8 +1,8 @@
 package screen
 
 import (
-	"goboy2/consts"
-	"goboy2/ppu"
+	"github.com/boombuler/goboy2/consts"
+	"github.com/boombuler/goboy2/ppu"
 	"log"
 	"runtime"
 	"time"
