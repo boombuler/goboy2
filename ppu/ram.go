@@ -57,11 +57,7 @@ func (sr oam) Write(addr uint16, val byte) {
 	case 2:
 		sr.data[no].tileID = val
 	case 3:
-		mask := byte(0xF0)
-		if sr.gbc {
-			mask = 0xEF
-		}
-		sr.data[no].flags = val & mask
+		sr.data[no].flags = val
 	}
 }
 
