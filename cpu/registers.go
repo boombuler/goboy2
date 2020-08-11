@@ -191,7 +191,12 @@ func (r reg16) Write() opCode {
 	switch r {
 	case pc:
 		return opCodeFn(func(cpu *CPU, state *ocState) {
-			cpu.pc = state.popW()
+			newPC := state.popW()
+			if cpu.haltBug {
+				cpu.haltBug = false
+			} else {
+				cpu.pc = newPC
+			}
 		})
 	case sp:
 		return opCodeFn(func(cpu *CPU, state *ocState) {
