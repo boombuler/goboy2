@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/boombuler/goboy2/cartridge"
 	"github.com/boombuler/goboy2/ppu"
 )
@@ -25,7 +26,7 @@ func runMooneyeRom(card *cartridge.Cartridge) {
 
 	exitChan := make(chan struct{})
 
-	gb := NewGameBoy(card, newNULLScreen(exitChan), false, exitChan)
+	gb := NewGameBoy(card, newNULLScreen(exitChan), Auto, exitChan)
 	gb.apu.TestMode = true // no frame limiting, no audio output
 	gb.CPU.OnExecOpCode = func(oc string) {
 		if oc == "LD B, B" {

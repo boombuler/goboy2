@@ -23,11 +23,28 @@ type GameBoy struct {
 	serial   *serial.Serial
 }
 
+type HardwareCompat byte
+
+const (
+	Auto HardwareCompat = iota
+	DMG
+	GBC
+)
+
 // NewGameBoy creates a new gameboy for the given cartridge
-func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, forceGBC bool, exitChan <-chan struct{}) *GameBoy {
+func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, hw HardwareCompat, exitChan <-chan struct{}) *GameBoy {
 	gb := new(GameBoy)
 	gb.exitChan = exitChan
-	gb.MMU = mmu.New(c.GBC || forceGBC)
+
+	gbc := false
+	switch hw {
+	case GBC:
+		gbc = true
+	case Auto:
+		gbc = c.GBC
+	}
+
+	gb.MMU = mmu.New(gbc)
 	gb.apu = apu.New(gb.MMU)
 	gb.CPU = cpu.New(gb.MMU)
 	gb.ppu = ppu.New(gb.MMU, screen, exitChan)

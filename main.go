@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
-	"github.com/boombuler/goboy2/cartridge"
-	"github.com/boombuler/goboy2/screen"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+
+	"github.com/boombuler/goboy2/cartridge"
+	"github.com/boombuler/goboy2/screen"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -41,6 +42,7 @@ var (
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 	mooneye    = flag.Bool("mooneye", false, "runs a mooneye test-rom")
 	gbc        = flag.Bool("color", false, "Force Gameboy Color mode")
+	dmg        = flag.Bool("dmg", false, "Force DMG-Gameboy mode")
 )
 
 func main() {
@@ -67,8 +69,15 @@ func main() {
 		return
 	}
 
+	hw := Auto
+	if *gbc {
+		hw = GBC
+	} else if *dmg {
+		hw = DMG
+	}
+
 	screen.Main(func(s *screen.Screen, input <-chan interface{}, exitChan <-chan struct{}) {
-		gb := NewGameBoy(c, s.GetOutputChannel(), *gbc, exitChan)
+		gb := NewGameBoy(c, s.GetOutputChannel(), hw, exitChan)
 		go func() {
 			for {
 				select {
