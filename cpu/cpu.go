@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"fmt"
+
 	"github.com/boombuler/goboy2/consts"
 	"github.com/boombuler/goboy2/mmu"
 )
@@ -40,11 +41,12 @@ type CPU struct {
 	mmu mmu.MMU
 	registers
 
-	key1        *key1Reg
-	ime         bool
-	haltEnabled bool
-	err         error
-	haltBug     bool
+	key1         *key1Reg
+	ime          bool
+	imeScheduled bool
+	haltEnabled  bool
+	err          error
+	haltBug      bool
 
 	curOpCode   opCode
 	opCodeState *ocState
@@ -133,7 +135,15 @@ func (cpu *CPU) Step() {
 		if cpu.Dump {
 			fmt.Printf("PC: 0x%04X  SP: 0x%04X  A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X  H: 0x%02X  L: 0x%02X  %v\n", cpu.pc, cpu.sp, cpu.a, cpu.b, cpu.c, cpu.d, cpu.e, cpu.h, cpu.l, cpu.f)
 		}
+
+		scheduled := cpu.imeScheduled
 		cpu.setOPCode(cpu.rootOC)
+
+		if scheduled {
+			cpu.ime = true
+			cpu.imeScheduled = false
+		}
+
 	} else {
 		curIRQFlags := mmu.IRQ(cpu.mmu.Read(consts.AddrIRQEnabled)) & mmu.IRQ(cpu.mmu.Read(consts.AddrIRQFlags))
 		if (curIRQFlags & mmu.IRQAll) != mmu.IRQNone {

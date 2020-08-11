@@ -428,13 +428,14 @@ func val(b byte) opCode {
 
 func ei() opCode {
 	return opCodeFn(func(c *CPU, s *ocState) {
-		c.ime = true
+		c.imeScheduled = true
 	})
 }
 
 func di() opCode {
 	return opCodeFn(func(c *CPU, s *ocState) {
 		c.ime = false
+		c.imeScheduled = false
 	})
 }
 
