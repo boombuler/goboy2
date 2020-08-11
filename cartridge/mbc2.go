@@ -4,12 +4,14 @@ import (
 	"fmt"
 )
 
+const mbc2RAMSize = 0x0200
+
 type mbc2 struct {
-	rombanks   []rombank
-	rambank    [0x0200]byte
-	activerom  int
-	ramenabled bool
-	battery    Battery
+	rombanks []rombank
+	rambank  [mbc2RAMSize]byte
+	romb     int
+	ramg     bool
+	battery  Battery
 }
 
 func createMBC2(c *Cartridge, data []byte, bat Battery) (MBC, error) {
@@ -20,8 +22,8 @@ func createMBC2(c *Cartridge, data []byte, bat Battery) (MBC, error) {
 	for rs := c.ROMSize; rs > 0; rs -= rombankSize {
 		m.rombanks = append(m.rombanks, rombank(data[c.ROMSize-rs:c.ROMSize-rs+rombankSize]))
 	}
-	m.activerom = 1
-	m.ramenabled = false
+	m.romb = 1
+	m.ramg = false
 	m.battery = bat
 	m.loadRAM()
 	return m, nil
@@ -32,37 +34,40 @@ func (m *mbc2) Read(addr uint16) byte {
 		return m.rombanks[0].Read(addr)
 	}
 	if addr >= rombankSize && addr < 2*rombankSize {
-		return m.rombanks[m.activerom].Read(addr)
+
+		return m.rombanks[m.romb].Read(addr)
 	}
-	if addr >= 0xA000 && addr < 0xA200 {
-		if m.ramenabled {
-			return m.rambank[addr-0xA000] & 0x0F
+	if addr >= 0xA000 && addr < 0xC000 {
+		if m.ramg {
+			return m.rambank[(addr-0xA000)%mbc2RAMSize] | 0xF0
 		}
 	}
 
-	return 0x00
+	return 0xFF
 }
 func (m *mbc2) Write(addr uint16, value byte) {
-	if addr <= 0x1FFF && (addr&0x0100 == 0x0000) {
-		m.ramenabled = value&0x0F == 0x0A
-		if !m.ramenabled {
-			m.saveRAM()
+	if addr < 0x4000 {
+		if addr&0x0100 == 0 {
+			m.ramg = value&0x0F == 0x0A
+			if !m.ramg {
+				m.saveRAM()
+			}
+		} else {
+			val := int(value & 0x0F)
+			if val == 0 {
+				val = 1
+			}
+			m.romb = val % len(m.rombanks)
 		}
-	}
-	if addr >= 0x2000 && addr <= 0x3FFF && (addr&0x0100) == 0x0100 {
-		m.activerom = int(value & 0x0F)
-		if m.activerom == 0 || m.activerom >= len(m.rombanks) {
-			m.activerom = 1
-		}
-	}
-	if m.ramenabled && addr >= 0xA000 && addr < 0xA200 {
-		m.rambank[addr-0xA000] = value & 0x0F
+	} else if m.ramg && addr >= 0xA000 && addr < 0xC000 {
+		m.rambank[(addr-0xA000)%mbc2RAMSize] = value
 	}
 }
 
 func (m *mbc2) Shutdown() {
 	m.saveRAM()
 }
+
 func (m *mbc2) saveRAM() {
 	if m.battery != nil {
 		w := m.battery.Open()
@@ -70,6 +75,7 @@ func (m *mbc2) saveRAM() {
 		w.Close()
 	}
 }
+
 func (m *mbc2) loadRAM() {
 	if m.battery != nil && m.battery.HasData() {
 		r := m.battery.Open()
