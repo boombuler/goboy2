@@ -53,18 +53,18 @@ The default key-map is as follows:
 With the [tests from the 18. Apr. 2020](https://github.com/Gekkio/mooneye-gb/commit/6b9488fa3e7da033a3c33c55ac94476c0e8368b0) the emulator currently gets the following results:
 
 
-| Test                                                | Result             |
-| --------------------------------------------------- | ------------------ |
+| Test                                                | Result             | 
+| --------------------------------------------------- | ------------------ | 
 | `acceptance -> add_sp_e_timing`                     | :heavy_check_mark: |
 | `acceptance -> bits -> mem_oam`                     | :heavy_check_mark: |
 | `acceptance -> bits -> reg_f`                       | :heavy_check_mark: |
 | `acceptance -> bits -> unused_hwio-GS`              | :heavy_check_mark: |
 | `acceptance -> boot_div-dmg0`                       | :x:                |
-| `acceptance -> boot_div-dmgABCmgb`                  | :x:                |
+| `acceptance -> boot_div-dmgABCmgb`                  | :heavy_check_mark: |
 | `acceptance -> boot_div-S`                          | :x:                |
 | `acceptance -> boot_div2-S`                         | :x:                |
 | `acceptance -> boot_hwio-dmg0`                      | :x:                |
-| `acceptance -> boot_hwio-dmgABCmgb`                 | :x:                |
+| `acceptance -> boot_hwio-dmgABCmgb`                 | :heavy_check_mark: |
 | `acceptance -> boot_hwio-S`                         | :x:                |
 | `acceptance -> boot_regs-dmg0`                      | :x:                |
 | `acceptance -> boot_regs-dmgABC`                    | :heavy_check_mark: |
@@ -99,11 +99,11 @@ With the [tests from the 18. Apr. 2020](https://github.com/Gekkio/mooneye-gb/com
 | `acceptance -> pop_timing`                          | :heavy_check_mark: |
 | `acceptance -> ppu -> hblank_ly_scx_timing-GS`      | :x:                |
 | `acceptance -> ppu -> intr_1_2_timing-GS`           | :x:                |
-| `acceptance -> ppu -> intr_2_0_timing`              | :heavy_check_mark: |
-| `acceptance -> ppu -> intr_2_mode0_timing`          | :heavy_check_mark: |
+| `acceptance -> ppu -> intr_2_0_timing`              | :x:                |
+| `acceptance -> ppu -> intr_2_mode0_timing`          | :x:                |
 | `acceptance -> ppu -> intr_2_mode0_timing_sprites`  | :x:                |
 | `acceptance -> ppu -> intr_2_mode3_timing`          | :x:                |
-| `acceptance -> ppu -> intr_2_oam_ok_timing`         | :heavy_check_mark: |
+| `acceptance -> ppu -> intr_2_oam_ok_timing`         | :x:                |
 | `acceptance -> ppu -> lcdon_timing-GS`              | :x:                |
 | `acceptance -> ppu -> lcdon_write_timing-GS`        | :x:                |
 | `acceptance -> ppu -> stat_irq_blocking`            | :x:                |

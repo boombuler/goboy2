@@ -33,6 +33,7 @@ func runMooneyeRom(card *cartridge.Cartridge) {
 			close(exitChan) // Test finished...
 		}
 	}
+	gb.Init(true)
 
 	gb.Run()
 	_, _, _, b, c, d, e, _, h, l := gb.CPU.GetRegisterValues()

@@ -42,9 +42,10 @@ func New(mmu mmu.MMU) *Timer {
 }
 
 func (t *Timer) Init(noBoot bool) {
-	t.div = 300
+	// I guess the timer runs before the cpu boots up.
+	t.div = 0x0245
 	if noBoot {
-		t.div += 0xAABC
+		t.div += 0xA985
 	}
 }
 
