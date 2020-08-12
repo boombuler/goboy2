@@ -5,17 +5,19 @@ const (
 )
 
 type waveChannel struct {
-	active   bool
-	length   int
-	timerCnt int
-	sample   float32
-	waveRAM  []byte
-	pos      int
+	apu        *APU
+	dacEnabled bool
+	length     int
+	timerCnt   int
+	sample     float32
+	waveRAM    []byte
+	pos        int
 
 	useLength  bool
 	timerLoad  int
 	volume     byte
 	lengthLoad byte
+	running    bool
 }
 
 func waveRAMAddrs() []uint16 {
@@ -26,22 +28,27 @@ func waveRAMAddrs() []uint16 {
 	return res
 }
 
-func newWaveChannel() *waveChannel {
+func newWaveChannel(apu *APU) *waveChannel {
 	return &waveChannel{
+		apu:     apu,
 		waveRAM: make([]byte, int(waveRAMLen)),
 	}
 }
 
+func (s *waveChannel) Init(noBoot bool) {
+}
+
 func (wc *waveChannel) Reset() {
-	wc.active = false
+	wc.dacEnabled = false
 	wc.length = 0
 	wc.timerCnt = 0
 	wc.sample = 0
 	wc.pos = 0
-	wc.useLength = true
+	wc.useLength = false
 	wc.timerLoad = 0
 	wc.volume = 0
 	wc.lengthLoad = 0
+	wc.running = false
 }
 
 func (wc *waveChannel) CurrentSample() float32 {
@@ -57,8 +64,8 @@ func (wc *waveChannel) Step(frameStep sequencerStep) {
 	if wc.timerCnt <= 0 {
 		wc.reloadTimer()
 
-		if wc.active {
-			if wc.Active() {
+		if wc.dacEnabled {
+			if !wc.useLength || wc.length > 0 {
 				wc.pos = (wc.pos + 1) & 0x1F
 				idx := wc.pos / 2
 				outByte := wc.waveRAM[idx]
@@ -68,6 +75,8 @@ func (wc *waveChannel) Step(frameStep sequencerStep) {
 				outByte = (outByte & 0x0F) >> wc.volumeShift()
 
 				wc.sample = float32(outByte) / 15
+			} else {
+				wc.running = false
 			}
 		} else {
 			wc.sample = 0
@@ -76,7 +85,7 @@ func (wc *waveChannel) Step(frameStep sequencerStep) {
 }
 
 func (wc *waveChannel) Active() bool {
-	return !wc.useLength || wc.length > 0
+	return wc.running
 }
 
 func (wc *waveChannel) volumeShift() byte {
@@ -93,33 +102,41 @@ func (wc *waveChannel) reloadTimer() {
 func (wc *waveChannel) Read(addr uint16) byte {
 	switch addr {
 	case addrNR30:
-		if wc.active {
+		if wc.dacEnabled {
 			return 0xFF
 		}
 		return 0x7F
 	case addrNR31:
-		return wc.lengthLoad
+		return 0xFF
 	case addrNR32:
 		return wc.volume<<5 | 0x9F
 	case addrNR33:
-		return byte(wc.timerLoad)
+		return 0xFF
 	case addrNR34:
 		var lenEnabled byte
 		if wc.useLength {
 			lenEnabled = 1
 		}
-		return byte((wc.timerLoad>>8)&0x07) | (lenEnabled << 6)
+		return 0xBF | (lenEnabled << 6)
 	default:
 		return wc.waveRAM[addr-addrWaveRAM]
 	}
 }
 
 func (wc *waveChannel) Write(addr uint16, val byte) {
+	if !wc.apu.active {
+		return
+	}
+
 	switch addr {
 	case addrNR30:
-		wc.active = val&0x80 != 0
+		wc.dacEnabled = val&0x80 != 0
+		if !wc.dacEnabled {
+			wc.running = false
+		}
 	case addrNR31:
 		wc.lengthLoad = val
+		wc.length = 256 - int(wc.lengthLoad)
 	case addrNR32:
 		wc.volume = (val >> 5) & 0x03
 	case addrNR33:
@@ -127,7 +144,7 @@ func (wc *waveChannel) Write(addr uint16, val byte) {
 	case addrNR34:
 		wc.timerLoad = (wc.timerLoad & 0xFF) | (int(val&0x07) << 8)
 		wc.useLength = val&0x40 != 0x00
-		if val&0x80 != 0 {
+		if val&0x80 != 0 && wc.dacEnabled {
 			wc.trigger()
 		}
 	default:
@@ -136,7 +153,10 @@ func (wc *waveChannel) Write(addr uint16, val byte) {
 }
 
 func (wc *waveChannel) trigger() {
-	wc.length = 256 - int(wc.lengthLoad)
+	wc.running = true
+	if wc.length == 0 {
+		wc.length = 256
+	}
 	wc.reloadTimer()
 	wc.pos = 0
 }

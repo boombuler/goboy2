@@ -8,6 +8,10 @@ type volumeEnvelope struct {
 	periodLoad byte
 }
 
+func (ve *volumeEnvelope) dacEnabled() bool {
+	return ve.VolumeLoad != 0 || ve.Increase
+}
+
 func (ve *volumeEnvelope) reset() {
 	ve.volume = 0
 	ve.VolumeLoad = 0

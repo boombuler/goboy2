@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime/pprof"
 
+	"github.com/boombuler/goboy2/mmu"
+
 	"github.com/boombuler/goboy2/cartridge"
 	"github.com/boombuler/goboy2/screen"
 
@@ -88,18 +90,20 @@ func main() {
 					switch e := ev.(type) {
 					case screen.KeyEvent:
 						if e.Key == sdl.K_d && e.Pressed {
-							gb.ppu.PrintPalettes()
+							gb.PPU.PrintPalettes()
 						}
 
-						gb.kb.HandleKeyEvent(e.Pressed, e.Key)
+						gb.Input.HandleKeyEvent(e.Pressed, e.Key)
 					}
 				}
 			}
 		}()
 
-		if *noboot {
-			gb.SetupNoBootRom()
-		}
+		noBootRom := *noboot ||
+			(hw == GBC && len(mmu.GBC_BOOTROM) == 0) ||
+			(hw == DMG && len(mmu.BOOTROM) == 0)
+
+		gb.Init(noBootRom)
 		gb.CPU.Dump = *dump
 		gb.Run()
 	})

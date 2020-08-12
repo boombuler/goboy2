@@ -2,6 +2,7 @@ package ppu
 
 import (
 	"fmt"
+
 	"github.com/boombuler/goboy2/consts"
 	"github.com/boombuler/goboy2/mmu"
 )
@@ -72,6 +73,13 @@ func New(mmu mmu.MMU, screen chan<- *ScreenImage, exitChan <-chan struct{}) *PPU
 		mmu.AddIODevice(ppu, consts.AddrVBK, consts.AddrLCDMODE)
 	}
 	return ppu
+}
+
+func (p *PPU) Init(noBoot bool) {
+	if noBoot {
+		p.Write(consts.AddrLCDC, 0x91)
+		p.Write(consts.AddrBGP, 0xFC)
+	}
 }
 
 func (p *PPU) PrintPalettes() {

@@ -16,6 +16,7 @@ type squareWaveGen struct {
 	lengthLoad byte
 	timerLoad  int
 	useLength  bool
+	running    bool
 }
 
 func newSquareWave(apu *APU, addr1, addr2, addr3, addr4 uint16) *squareWaveGen {
@@ -40,7 +41,11 @@ func (s *squareWaveGen) Reset() {
 	s.dutyMode = 0
 	s.lengthLoad = 0
 	s.timerLoad = 0
-	s.useLength = true
+	s.useLength = false
+	s.running = false
+}
+
+func (s *squareWaveGen) Init(noBoot bool) {
 }
 
 func (s *squareWaveGen) Step(frameStep sequencerStep) {
@@ -58,18 +63,20 @@ func (s *squareWaveGen) Step(frameStep sequencerStep) {
 		s.reloadTimer()
 		s.dutyIdx = (s.dutyIdx + 1) % 8
 
-		if s.Active() {
+		if !s.useLength || s.lengthCounter > 0 {
 			if s.duty()&byte(1<<s.dutyIdx) == 0 {
 				s.hi = false
 			} else {
 				s.hi = true
 			}
+		} else {
+			s.running = false
 		}
 	}
 }
 
 func (s *squareWaveGen) Active() bool {
-	return !s.useLength || s.lengthCounter > 0
+	return s.running
 }
 
 func (s *squareWaveGen) CurrentSample() float32 {
@@ -98,7 +105,10 @@ func (s *squareWaveGen) reloadTimer() {
 }
 
 func (s *squareWaveGen) trigger() {
-	s.lengthCounter = 64 - s.lengthLoad
+	s.running = true
+	if s.lengthCounter == 0 {
+		s.lengthCounter = 64
+	}
 	s.reloadTimer()
 	s.ve.Reset()
 }
@@ -106,37 +116,43 @@ func (s *squareWaveGen) trigger() {
 func (s *squareWaveGen) Read(addr uint16) byte {
 	switch addr {
 	case s.addr1:
-		return (s.lengthLoad & 0x3F) | ((s.dutyMode & 0x03) << 6)
+		return 0x3F | ((s.dutyMode & 0x03) << 6)
 	case s.addr2:
 		return s.ve.Read()
-	case s.addr3:
-		return byte(s.timerLoad)
 	case s.addr4:
 		var useLen byte
 		if s.useLength {
 			useLen = 1
 		}
 
-		return byte((s.timerLoad>>8)&0x07) | (useLen << 6)
+		return 0xBF | (useLen << 6)
 	default:
-		return 0x00
+		return 0xFF
 	}
 }
 
 func (s *squareWaveGen) Write(addr uint16, val byte) {
+	if !s.apu.active {
+		return
+	}
 	switch addr {
 	case s.addr1:
 		s.lengthLoad = val & 0x3F
+		s.lengthCounter = 64 - s.lengthLoad
 		s.dutyMode = (val >> 6) & 0x03
 	case s.addr2:
 		s.dacEnabled = val&0xF8 != 0
+		if !s.dacEnabled {
+			s.running = false
+		}
 		s.ve.Write(val)
 	case s.addr3:
 		s.timerLoad = (s.timerLoad & 0x0700) | int(val)
 	case s.addr4:
 		s.timerLoad = (s.timerLoad & 0xFF) | (int(val&0x07) << 8)
 		s.useLength = val&0x40 != 0
-		if val&(1<<7) != 0 {
+
+		if (val&(1<<7) != 0) && s.dacEnabled {
 			s.trigger()
 		}
 	}

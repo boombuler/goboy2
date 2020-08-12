@@ -34,7 +34,19 @@ The default key-map is as follows:
 
 ## Tests
 
+### Blargg
 
+| Test             | Result             |
+| ---------------- | ------------------ |
+| `cgb_sound`      | :x:                |
+| `cpu_instrs`     | :heavy_check_mark: |
+| `dmg_sound`      | :x:                |
+| `instr_timing`   | :heavy_check_mark: |
+| `interrupt_time` | :x:                |
+| `mem_timing`     | :heavy_check_mark: |
+| `mem_timing-2`   | :heavy_check_mark: |
+| `oam_bug`        | :x:                |
+| `halt_bug`       | :heavy_check_mark: |
 
 ### Mooneye
 

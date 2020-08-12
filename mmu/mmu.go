@@ -11,6 +11,7 @@ type MMU interface {
 	AddIODevice(d IODevice, addrs ...uint16)
 	Step()
 	GBC() bool
+	Init(noBoot bool)
 }
 
 type mmuImpl struct {
@@ -75,6 +76,13 @@ func (m *mmuImpl) LoadCartridge(cartridge IODevice) {
 
 func (m *mmuImpl) ConnectPPU(ppu IODevice) {
 	m.ppu = ppu
+}
+
+func (m *mmuImpl) Init(noBoot bool) {
+	if noBoot {
+		m.Write(consts.AddrBootmodeFlag, 0x01) // Disable Boot ROM.
+		m.Write(consts.AddrIRQFlags, 1)
+	}
 }
 
 func (m *mmuImpl) Read(addr uint16) byte {

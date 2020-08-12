@@ -71,6 +71,12 @@ func New(mmu mmu.MMU) *CPU {
 	return cpu
 }
 
+func (c *CPU) Init(noBoot bool) {
+	if noBoot {
+		c.SetRegisterValues(0x0100, 0xFFFE, 0x01, 0x00, 0x13, 0x00, 0xD8, 0xB0, 0x01, 0x4D)
+	}
+}
+
 // DoubleSpeed checks if the cpu is running in double speed mode.
 func (cpu *CPU) DoubleSpeed() bool {
 	return cpu.key1 != nil && cpu.key1.dblSpeed

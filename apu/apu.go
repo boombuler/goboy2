@@ -1,10 +1,11 @@
 package apu
 
 import (
-	"github.com/boombuler/goboy2/consts"
-	"github.com/boombuler/goboy2/mmu"
 	"sync"
 	"time"
+
+	"github.com/boombuler/goboy2/consts"
+	"github.com/boombuler/goboy2/mmu"
 )
 
 type audioChannel bool
@@ -78,8 +79,8 @@ func New(mmu mmu.MMU) *APU {
 	}
 	ch1 := newSweepSquareWaveGen(apu)
 	ch2 := newSquareWave(apu, addrNR21, addrNR22, addrNR23, addrNR24)
-	ch3 := newWaveChannel()
-	ch4 := newNoiseGen()
+	ch3 := newWaveChannel(apu)
+	ch4 := newNoiseGen(apu)
 
 	apu.generators = []soundChannel{
 		ch1,
@@ -102,6 +103,16 @@ type soundChannel interface {
 	Step(s sequencerStep)
 	Reset()
 	Active() bool
+	Init(noBoot bool)
+}
+
+func (apu *APU) Init(noBoot bool) {
+	for _, ch := range apu.generators {
+		ch.Init(noBoot)
+	}
+	apu.active = true
+	apu.volumeSelect = 0x77
+	apu.channelSelect = 0xF3
 }
 
 func (apu *APU) reset() {
@@ -127,6 +138,7 @@ func (apu *APU) Read(addr uint16) byte {
 		if apu.active {
 			result |= 0x80
 		}
+
 		for i, ch := range apu.generators {
 			if ch.Active() {
 				result |= (1 << byte(i))
@@ -141,9 +153,13 @@ func (apu *APU) Read(addr uint16) byte {
 func (apu *APU) Write(addr uint16, val byte) {
 	switch addr {
 	case addrNR50:
-		apu.volumeSelect = val
+		if apu.active {
+			apu.volumeSelect = val
+		}
 	case addrNR51:
-		apu.channelSelect = val
+		if apu.active {
+			apu.channelSelect = val
+		}
 	case addrNR52:
 		oldActive := apu.active
 		apu.active = val&0x80 != 0

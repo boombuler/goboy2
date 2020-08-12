@@ -41,6 +41,13 @@ func New(mmu mmu.MMU) *Timer {
 	return t
 }
 
+func (t *Timer) Init(noBoot bool) {
+	t.div = 300
+	if noBoot {
+		t.div += 0xAABC
+	}
+}
+
 // Prepare the timer for the next cpu tick.
 func (t *Timer) Prepare() {
 	t.setDiv(t.div + 4)

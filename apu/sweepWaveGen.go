@@ -14,6 +14,15 @@ func newSweepSquareWaveGen(apu *APU) *sweepSquareWaveGen {
 	}
 }
 
+func (s *sweepSquareWaveGen) Init(noBoot bool) {
+	if noBoot {
+		s.sweepCtrl = 0
+		s.dutyMode = 2
+		s.ve.Write(0xF3)
+		s.running = true
+	}
+}
+
 func (s *sweepSquareWaveGen) Reset() {
 	s.squareWaveGen.Reset()
 	s.sweepCtrl = 0
@@ -65,6 +74,10 @@ func (s *sweepSquareWaveGen) Read(addr uint16) byte {
 }
 
 func (s *sweepSquareWaveGen) Write(addr uint16, val byte) {
+	if !s.apu.active {
+		return
+	}
+
 	if addr == addrNR10 {
 		s.sweepCtrl = val
 		s.overflowed = false
