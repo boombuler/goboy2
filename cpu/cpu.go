@@ -96,8 +96,11 @@ func (cpu *CPU) hasFlag(f flag) bool {
 
 func (cpu *CPU) nextOpCode(oc opCode, state *ocState) opCode {
 	oc = oc.Next(state)
-	if fn := cpu.OnExecOpCode; fn != nil {
-		if info, ok := oc.(labeledOpCode); ok {
+	if info, ok := oc.(labeledOpCode); ok {
+		if cpu.Dump {
+			fmt.Printf("%-15s PC: 0x%04X  SP: 0x%04X  A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X  H: 0x%02X  L: 0x%02X  %v\n", info.Label(), cpu.pc, cpu.sp, cpu.a, cpu.b, cpu.c, cpu.d, cpu.e, cpu.h, cpu.l, cpu.f)
+		}
+		if fn := cpu.OnExecOpCode; fn != nil {
 			fn(info.Label())
 		}
 	}
@@ -138,9 +141,6 @@ func (cpu *CPU) Step() {
 		}
 
 		cpu.opCodeState.clear()
-		if cpu.Dump {
-			fmt.Printf("PC: 0x%04X  SP: 0x%04X  A: 0x%02X  B: 0x%02X  C: 0x%02X  D: 0x%02X  E: 0x%02X  H: 0x%02X  L: 0x%02X  %v\n", cpu.pc, cpu.sp, cpu.a, cpu.b, cpu.c, cpu.d, cpu.e, cpu.h, cpu.l, cpu.f)
-		}
 
 		scheduled := cpu.imeScheduled
 		cpu.setOPCode(cpu.rootOC)
