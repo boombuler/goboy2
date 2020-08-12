@@ -19,6 +19,11 @@ func (c *dmaTransfer) Read(addr uint16) byte {
 
 func (c *dmaTransfer) Write(addr uint16, value byte) {
 	c.addr = uint16(value) << 8 & 0xFF00
+	if c.addr >= 0xF000 {
+		// the source of the oam dma can't be in the graphic ram.
+		// so this wraps like the shadow ram
+		c.addr -= 0x2000
+	}
 	c.steps = 162
 }
 

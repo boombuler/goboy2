@@ -92,7 +92,7 @@ With the [tests from the 18. Apr. 2020](https://github.com/Gekkio/mooneye-gb/com
 | `acceptance -> ld_hl_sp_e_timing`                   | :heavy_check_mark: |
 | `acceptance -> oam_dma -> basic`                    | :heavy_check_mark: |
 | `acceptance -> oam_dma -> reg_read`                 | :heavy_check_mark: |
-| `acceptance -> oam_dma -> sources-GS`               | :x:                |
+| `acceptance -> oam_dma -> sources-GS`               | :heavy_check_mark: |
 | `acceptance -> oam_dma_restart`                     | :heavy_check_mark: |
 | `acceptance -> oam_dma_start`                       | :heavy_check_mark: |
 | `acceptance -> oam_dma_timing`                      | :heavy_check_mark: |
