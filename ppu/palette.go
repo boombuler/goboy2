@@ -134,7 +134,7 @@ func (p *gbcPalette) Write(addr uint16, val byte) {
 		}
 
 		if p.autoInc {
-			p.idx++
+			p.idx = (p.idx + 1) & 0x3f
 		}
 	}
 }
