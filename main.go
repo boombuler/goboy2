@@ -66,16 +66,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if *mooneye {
-		runMooneyeRom(c)
-		return
-	}
-
 	hw := Auto
 	if *gbc {
 		hw = GBC
 	} else if *dmg {
 		hw = DMG
+	}
+
+	if *mooneye {
+		runMooneyeRom(c, hw)
+		return
 	}
 
 	screen.Main(func(s *screen.Screen, input <-chan interface{}, exitChan <-chan struct{}) {

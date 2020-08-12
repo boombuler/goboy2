@@ -22,11 +22,10 @@ func newNULLScreen(exitChan <-chan struct{}) chan<- *ppu.ScreenImage {
 	return screen
 }
 
-func runMooneyeRom(card *cartridge.Cartridge) {
-
+func runMooneyeRom(card *cartridge.Cartridge, compat HardwareCompat) {
 	exitChan := make(chan struct{})
 
-	gb := NewGameBoy(card, newNULLScreen(exitChan), Auto, exitChan)
+	gb := NewGameBoy(card, newNULLScreen(exitChan), compat, exitChan)
 	gb.APU.TestMode = true // no frame limiting, no audio output
 	gb.CPU.OnExecOpCode = func(oc string) {
 		if oc == "LD B, B" {
