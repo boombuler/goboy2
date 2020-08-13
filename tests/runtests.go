@@ -101,7 +101,7 @@ func runMooneye(emuPath string, rom TestDef) {
 			panic(err)
 		}
 	} else {
-		fmt.Print("\033[0;32m ✓     \033[0;37m")
+		fmt.Print("\033[0;32m ✅    \033[0;37m")
 	}
 	fmt.Println(" |")
 }
