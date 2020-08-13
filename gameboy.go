@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/boombuler/goboy2/apu"
 	"github.com/boombuler/goboy2/cartridge"
+	"github.com/boombuler/goboy2/consts"
 	"github.com/boombuler/goboy2/cpu"
 	"github.com/boombuler/goboy2/input"
 	"github.com/boombuler/goboy2/mmu"
@@ -11,9 +12,11 @@ import (
 	"github.com/boombuler/goboy2/timer"
 )
 
+const compatAuto consts.HardwareCompat = -1
+
 type GameBoy struct {
 	exitChan <-chan struct{}
-	compat   HardwareCompat
+	compat   consts.HardwareCompat
 	MMU      mmu.MMU
 	CPU      *cpu.CPU
 	PPU      *ppu.PPU
@@ -23,38 +26,25 @@ type GameBoy struct {
 	Serial   *serial.Serial
 }
 
-type HardwareCompat byte
-
-const (
-	Auto HardwareCompat = iota
-	DMG
-	GBC
-)
-
 // NewGameBoy creates a new gameboy for the given cartridge
-func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, hw HardwareCompat, exitChan <-chan struct{}) *GameBoy {
+func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, hw consts.HardwareCompat, exitChan <-chan struct{}) *GameBoy {
 	gb := new(GameBoy)
 	gb.exitChan = exitChan
 
-	gbc := false
-	switch hw {
-	case GBC:
-		gbc = true
-	case Auto:
-		gbc = c.GBC
-		if gbc {
-			hw = GBC
+	if hw == compatAuto {
+		if c.GBC {
+			hw = consts.GBC
 		} else {
-			hw = DMG
+			hw = consts.DMG
 		}
 	}
 
 	gb.compat = hw
-	gb.MMU = mmu.New(gbc)
+	gb.MMU = mmu.New(hw)
 	gb.APU = apu.New(gb.MMU)
-	gb.CPU = cpu.New(gb.MMU)
-	gb.PPU = ppu.New(gb.MMU, screen, exitChan)
-	gb.Timer = timer.New(gb.MMU)
+	gb.CPU = cpu.New(gb.MMU, hw)
+	gb.PPU = ppu.New(gb.MMU, hw, screen, exitChan)
+	gb.Timer = timer.New(gb.MMU, hw)
 	gb.Serial = serial.New(gb.MMU)
 	gb.Input = input.NewKeyboard(gb.MMU)
 	gb.MMU.LoadCartridge(c)

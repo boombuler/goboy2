@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime/pprof"
 
+	"github.com/boombuler/goboy2/consts"
 	"github.com/boombuler/goboy2/mmu"
 
 	"github.com/boombuler/goboy2/cartridge"
@@ -66,11 +67,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	hw := Auto
+	hw := compatAuto
 	if *gbc {
-		hw = GBC
+		hw = consts.GBC
 	} else if *dmg {
-		hw = DMG
+		hw = consts.DMG
 	}
 
 	if *mooneye {
@@ -100,8 +101,8 @@ func main() {
 		}()
 
 		noBootRom := *noboot ||
-			(hw == GBC && len(mmu.GBC_BOOTROM) == 0) ||
-			(hw == DMG && len(mmu.BOOTROM) == 0)
+			(hw == consts.GBC && len(mmu.GBC_BOOTROM) == 0) ||
+			(hw == consts.DMG && len(mmu.BOOTROM) == 0)
 
 		gb.Init(noBootRom)
 		gb.CPU.Dump = *dump

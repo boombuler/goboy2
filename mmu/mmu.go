@@ -1,6 +1,8 @@
 package mmu
 
-import "github.com/boombuler/goboy2/consts"
+import (
+	"github.com/boombuler/goboy2/consts"
+)
 
 type MMU interface {
 	IODevice
@@ -10,7 +12,6 @@ type MMU interface {
 	LoadCartridge(cartridge IODevice)
 	AddIODevice(d IODevice, addrs ...uint16)
 	Step()
-	GBC() bool
 	Init(noBoot bool)
 }
 
@@ -43,21 +44,17 @@ func (bm *bootMode) Write(addr uint16, value byte) {
 	}
 }
 
-func New(gbc bool) MMU {
+func New(hw consts.HardwareCompat) MMU {
 	res := &mmuImpl{
-		gbc:       gbc,
+		gbc:       hw == consts.GBC,
 		ioDevices: make([]IODevice, 256),
 	}
-	res.ram = newWorkingRAM(res)
+	res.ram = newWorkingRAM(res, hw)
 	res.dma = &dmaTransfer{mmu: res}
 	res.AddIODevice(new(irqHandler), consts.AddrIRQFlags, consts.AddrIRQEnabled)
 	res.AddIODevice(new(bootMode), consts.AddrBootmodeFlag)
 	res.AddIODevice(res.dma, consts.AddrDMATransfer)
 	return res
-}
-
-func (m *mmuImpl) GBC() bool {
-	return m.gbc
 }
 
 func (m *mmuImpl) Step() {

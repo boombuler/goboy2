@@ -19,6 +19,7 @@ type overflowState byte
 // Timer encapsulates the Gameboy hardware timer
 type Timer struct {
 	mmu  mmu.MMU
+	hw   consts.HardwareCompat
 	div  uint16
 	tac  byte
 	tima byte
@@ -34,18 +35,26 @@ const (
 )
 
 // New creates a new timer for the given mmu and connects it to the given clock
-func New(mmu mmu.MMU) *Timer {
+func New(mmu mmu.MMU, hw consts.HardwareCompat) *Timer {
 	t := new(Timer)
 	t.mmu = mmu
+	t.hw = hw
 	mmu.AddIODevice(t, consts.AddrDivider, consts.AddrTIMA, consts.AddrModulo, consts.AddrCtrl)
 	return t
 }
 
 func (t *Timer) Init(noBoot bool) {
 	// I guess the timer runs before the cpu boots up.
-	t.div = 0x0245
-	if noBoot {
-		t.div += 0xA985
+	if t.hw == consts.GBC {
+		t.div = 0x8970
+		if noBoot {
+			t.div += 0x9D05
+		}
+	} else {
+		t.div = 0x0245
+		if noBoot {
+			t.div += 0xA985
+		}
 	}
 }
 

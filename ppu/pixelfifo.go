@@ -91,7 +91,7 @@ func (fifo *pixelFiFo) dequeue(ppu *PPU) RGB {
 	pix := colIdx(b)
 
 	var palette palette
-	if ppu.mmu.GBC() {
+	if ppu.gbc {
 		palette = ppu.obcPal
 		if useBGPal(b) {
 			palette = ppu.bgcPal

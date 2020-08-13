@@ -9,6 +9,7 @@ import (
 
 type PPU struct {
 	mmu            mmu.MMU
+	gbc            bool
 	phaseIdx       int
 	phases         []ppuPhase
 	visibleSprites []int
@@ -39,14 +40,14 @@ type PPU struct {
 }
 
 // New creates a new ppu and connects it to the given mmu
-func New(mmu mmu.MMU, screen chan<- *ScreenImage, exitChan <-chan struct{}) *PPU {
-	gbc := mmu.GBC()
+func New(mmu mmu.MMU, hw consts.HardwareCompat, screen chan<- *ScreenImage, exitChan <-chan struct{}) *PPU {
 	screen = dropFrames(screen, exitChan)
 
 	ppu := &PPU{
 		mmu:       mmu,
+		gbc:       hw == consts.GBC,
 		vram0:     newVRAM(),
-		oam:       newOAM(gbc),
+		oam:       newOAM(hw == consts.GBC),
 		screenOut: screen,
 		phaseIdx:  0,
 		bgPal:     new(gbPalette),
@@ -62,7 +63,7 @@ func New(mmu mmu.MMU, screen chan<- *ScreenImage, exitChan <-chan struct{}) *PPU
 	mmu.AddIODevice(ppu, consts.AddrLCDC, consts.AddrSTAT, consts.AddrSCROLLY, consts.AddrSCROLLX,
 		consts.AddrLY, consts.AddrLYC, consts.AddrBGP, consts.AddrOBJECTPALETTE0, consts.AddrOBJECTPALETTE1,
 		consts.AddrWY, consts.AddrWX)
-	if gbc {
+	if ppu.gbc {
 		ppu.vram1 = newVRAM()
 		ppu.dma = new(vramDMA)
 		ppu.bgcPal = newGBCPalette(consts.AddrBGPI)
@@ -79,6 +80,101 @@ func (p *PPU) Init(noBoot bool) {
 	if noBoot {
 		p.Write(consts.AddrLCDC, 0x91)
 		p.Write(consts.AddrBGP, 0xFC)
+
+		if p.gbc {
+			p.obcPal.Write(consts.AddrOBPI, 0x80)
+			p.obcPal.Write(consts.AddrOBPD, 0xFF)
+			p.obcPal.Write(consts.AddrOBPD, 0x7F)
+			p.obcPal.Write(consts.AddrOBPD, 0x1F)
+			p.obcPal.Write(consts.AddrOBPD, 0x42)
+			p.obcPal.Write(consts.AddrOBPD, 0xF2)
+			p.obcPal.Write(consts.AddrOBPD, 0x1C)
+			p.obcPal.Write(consts.AddrOBPD, 0x00)
+			p.obcPal.Write(consts.AddrOBPD, 0x00)
+			p.obcPal.Write(consts.AddrOBPD, 0xFF)
+			p.obcPal.Write(consts.AddrOBPD, 0x7F)
+			p.obcPal.Write(consts.AddrOBPD, 0x1F)
+			p.obcPal.Write(consts.AddrOBPD, 0x42)
+			p.obcPal.Write(consts.AddrOBPD, 0xF2)
+			p.obcPal.Write(consts.AddrOBPD, 0x1C)
+			p.obcPal.Write(consts.AddrOBPD, 0x00)
+			p.obcPal.Write(consts.AddrOBPD, 0x00)
+			p.bgcPal.Write(consts.AddrBGPI, 0x80)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPI, 0x80)
+			p.bgcPal.Write(consts.AddrBGPD, 0xFF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x7F)
+			p.bgcPal.Write(consts.AddrBGPD, 0xEF)
+			p.bgcPal.Write(consts.AddrBGPD, 0x1B)
+			p.bgcPal.Write(consts.AddrBGPD, 0x80)
+			p.bgcPal.Write(consts.AddrBGPD, 0x61)
+			p.bgcPal.Write(consts.AddrBGPD, 0x00)
+			p.bgcPal.Write(consts.AddrBGPD, 0x00)
+
+		}
 	}
 }
 
@@ -95,7 +191,7 @@ func (p *PPU) state() ppuState {
 }
 
 func (p *PPU) dmgMode() bool {
-	return p.lcdMode == 4 || !p.mmu.GBC()
+	return p.lcdMode == 4 || !p.gbc
 }
 
 func (p *PPU) Read(addr uint16) byte {

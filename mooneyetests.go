@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/boombuler/goboy2/cartridge"
+	"github.com/boombuler/goboy2/consts"
 	"github.com/boombuler/goboy2/ppu"
 )
 
@@ -22,7 +23,7 @@ func newNULLScreen(exitChan <-chan struct{}) chan<- *ppu.ScreenImage {
 	return screen
 }
 
-func runMooneyeRom(card *cartridge.Cartridge, compat HardwareCompat) {
+func runMooneyeRom(card *cartridge.Cartridge, compat consts.HardwareCompat) {
 	exitChan := make(chan struct{})
 
 	gb := NewGameBoy(card, newNULLScreen(exitChan), compat, exitChan)

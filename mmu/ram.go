@@ -8,9 +8,9 @@ type workingRAM struct {
 	banks        []rambank
 }
 
-func newWorkingRAM(mmu MMU) IODevice {
+func newWorkingRAM(mmu MMU, hw consts.HardwareCompat) IODevice {
 	wr := new(workingRAM)
-	if mmu.GBC() {
+	if hw == consts.GBC {
 		wr.banks = make([]rambank, 8)
 		mmu.AddIODevice(wr, consts.AddrSVBK)
 	} else {
