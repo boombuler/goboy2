@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/boombuler/goboy2/cartridge"
 	"github.com/boombuler/goboy2/consts"
@@ -38,8 +38,9 @@ func runMooneyeRom(card *cartridge.Cartridge, compat consts.HardwareCompat) {
 	gb.Run()
 	_, _, _, b, c, d, e, _, h, l := gb.CPU.GetRegisterValues()
 	if b != 3 || c != 5 || d != 8 || e != 13 || h != 21 || l != 34 {
-		fmt.Println("\033[0;31m FAILED\033[0;37m")
+		os.Exit(1)
+
 	} else {
-		fmt.Println("\033[0;32m OK\033[0;37m")
+		os.Exit(0)
 	}
 }

@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strings"
 )
 
 var (
@@ -25,8 +27,8 @@ func build(dir string) {
 type Hardware byte
 
 const (
-	Any Hardware = iota
-	None
+	None Hardware = iota
+	Any
 	DMG
 	GBC
 )
@@ -34,6 +36,26 @@ const (
 type TestDef struct {
 	Mode Hardware
 	Path []string
+}
+
+type TestDefs []TestDef
+
+func (t TestDefs) Len() int {
+	return len(t)
+}
+
+func (t TestDefs) Less(i, j int) bool {
+	if t[i].Mode < t[j].Mode {
+		return true
+	}
+	if t[i].Mode == t[j].Mode {
+		return strings.Compare(filepath.Join(t[i].Path...), filepath.Join(t[j].Path...)) < 0
+	}
+	return false
+}
+
+func (t TestDefs) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
 }
 
 func Test(mode Hardware, path ...string) TestDef {
@@ -45,10 +67,7 @@ func Test(mode Hardware, path ...string) TestDef {
 
 func runMooneye(emuPath string, rom TestDef) {
 	modeFlag := "-dmg"
-	switch rom.Mode {
-	case None:
-		return
-	case GBC:
+	if rom.Mode == GBC {
 		modeFlag = "-color"
 	}
 
@@ -68,16 +87,26 @@ func runMooneye(emuPath string, rom TestDef) {
 		}
 	}
 
-	fmt.Printf("%-50s", romName+":")
+	fmt.Printf("%-54s", "| `"+romName+"`")
+	fmt.Print(" |")
 	cmd := exec.Command(emuPath, "-mooneye", modeFlag, romFile)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		panic(err)
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.ExitCode() != 0 {
+				fmt.Print("\033[0;31m ❌    \033[0;37m")
+			}
+		} else {
+			panic(err)
+		}
+	} else {
+		fmt.Print("\033[0;32m ✓     \033[0;37m")
 	}
+	fmt.Println(" |")
 }
 
-var mooneyeTests = []TestDef{
+var mooneyeTests = TestDefs{
 	Test(Any, "acceptance", "add_sp_e_timing"),
 	Test(Any, "acceptance", "bits", "mem_oam"),
 	Test(Any, "acceptance", "bits", "reg_f"),
@@ -183,7 +212,7 @@ var mooneyeTests = []TestDef{
 	Test(Any, "emulator-only", "mbc5", "rom_8Mb"),
 	Test(GBC, "misc", "bits", "unused_hwio-C"),
 	Test(None, "misc", "boot_div-A"),
-	Test(GBC, "misc", "boot_div-cgb0"),
+	Test(None, "misc", "boot_div-cgb0"),
 	Test(GBC, "misc", "boot_div-cgbABCDE"),
 	Test(GBC, "misc", "boot_hwio-C"),
 	Test(None, "misc", "boot_regs-A"),
@@ -195,6 +224,7 @@ var pwd string
 
 func main() {
 	flag.Parse()
+	sort.Sort(mooneyeTests)
 	var err error
 	pwd, err = os.Getwd()
 	if err != nil {
@@ -208,7 +238,31 @@ func main() {
 	}
 
 	emu := filepath.Join(filepath.Dir(pwd), "goboy2"+ext)
+	lastMode := None
 	for _, met := range mooneyeTests {
+		if met.Mode == None {
+			continue
+		}
+
+		if met.Mode != lastMode {
+			lastMode = met.Mode
+			fmt.Println()
+			fmt.Println()
+			fmt.Print("\033[1;34m#### ")
+			switch met.Mode {
+			case Any:
+				fmt.Print("General")
+			case DMG:
+				fmt.Print("DMG")
+			case GBC:
+				fmt.Print("GBC")
+			}
+			fmt.Println("\033[0m")
+			fmt.Println()
+
+			fmt.Println("| Test                                                 | Result |")
+			fmt.Println("| ---------------------------------------------------- | ------ |")
+		}
 		runMooneye(emu, met)
 	}
 }
