@@ -27,6 +27,7 @@ func runMooneyeRom(card *cartridge.Cartridge, compat consts.HardwareCompat) {
 	exitChan := make(chan struct{})
 
 	gb := NewGameBoy(card, newNULLScreen(exitChan), compat, exitChan)
+	gb.CPU.Dump = *dump
 	gb.APU.TestMode = true // no frame limiting, no audio output
 	gb.CPU.OnExecOpCode = func(oc string) {
 		if oc == "LD B, B" {

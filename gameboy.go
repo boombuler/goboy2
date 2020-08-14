@@ -16,7 +16,6 @@ const compatAuto consts.HardwareCompat = -1
 
 type GameBoy struct {
 	exitChan <-chan struct{}
-	compat   consts.HardwareCompat
 	MMU      mmu.MMU
 	CPU      *cpu.CPU
 	PPU      *ppu.PPU
@@ -39,12 +38,11 @@ func NewGameBoy(c *cartridge.Cartridge, screen chan<- *ppu.ScreenImage, hw const
 		}
 	}
 
-	gb.compat = hw
 	gb.MMU = mmu.New(hw)
 	gb.APU = apu.New(gb.MMU)
-	gb.CPU = cpu.New(gb.MMU, hw)
-	gb.PPU = ppu.New(gb.MMU, hw, screen, exitChan)
-	gb.Timer = timer.New(gb.MMU, hw)
+	gb.CPU = cpu.New(gb.MMU)
+	gb.PPU = ppu.New(gb.MMU, screen, exitChan)
+	gb.Timer = timer.New(gb.MMU)
 	gb.Serial = serial.New(gb.MMU)
 	gb.Input = input.NewKeyboard(gb.MMU)
 	gb.MMU.LoadCartridge(c)
@@ -81,9 +79,11 @@ func (gb *GameBoy) Run() {
 
 // InitNoBOOT brings the gameboy to the state after the bootrom finished
 func (gb *GameBoy) Init(noBoot bool) {
-	gb.MMU.Init(noBoot)
 	gb.CPU.Init(noBoot)
 	gb.Timer.Init(noBoot)
 	gb.APU.Init(noBoot)
 	gb.PPU.Init(noBoot)
+
+	// MMU should be initialized last, because it disables the bootrom flag and sets the gbc to dmg mode if needed.
+	gb.MMU.Init(noBoot)
 }

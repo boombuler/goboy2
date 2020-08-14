@@ -1,5 +1,7 @@
 package ppu
 
+import "github.com/boombuler/goboy2/consts"
+
 type fetcherState byte
 
 const (
@@ -127,7 +129,7 @@ func (f *fetcher) tick(ppu *PPU) {
 	case fsReadTileID:
 		addr := f.mapAddress + f.xOffset
 		f.tileID = ppu.vram0.Read(addr)
-		if ppu.dmgMode() {
+		if ppu.mmu.EmuMode() == consts.DMG {
 			f.tileAttr = 0
 		} else {
 			f.tileAttr = tileAttr(ppu.vram1.Read(addr))
@@ -202,7 +204,7 @@ func (f *fetcher) fillPixBuffer(ppu *PPU, attr renderAttr, isObj bool) {
 		return 0
 	}
 
-	palIdx := attr.palIdx(!ppu.dmgMode()) & 0x07
+	palIdx := attr.palIdx(ppu.mmu.EmuMode() == consts.GBC) & 0x07
 	pixBase := byte(palIdx) << 4
 	if !isObj {
 		pixBase |= 0x80

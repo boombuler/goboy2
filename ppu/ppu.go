@@ -9,7 +9,6 @@ import (
 
 type PPU struct {
 	mmu            mmu.MMU
-	gbc            bool
 	phaseIdx       int
 	phases         []ppuPhase
 	visibleSprites []int
@@ -28,7 +27,6 @@ type PPU struct {
 	objPal  *gbPalette
 	bgcPal  *gbcPalette
 	obcPal  *gbcPalette
-	lcdMode byte
 
 	screenOut chan<- *ScreenImage
 	curScreen *ScreenImage
@@ -40,14 +38,13 @@ type PPU struct {
 }
 
 // New creates a new ppu and connects it to the given mmu
-func New(mmu mmu.MMU, hw consts.HardwareCompat, screen chan<- *ScreenImage, exitChan <-chan struct{}) *PPU {
+func New(mmu mmu.MMU, screen chan<- *ScreenImage, exitChan <-chan struct{}) *PPU {
 	screen = dropFrames(screen, exitChan)
 
 	ppu := &PPU{
 		mmu:       mmu,
-		gbc:       hw == consts.GBC,
 		vram0:     newVRAM(),
-		oam:       newOAM(hw == consts.GBC),
+		oam:       newOAM(mmu.HardwareCompat() == consts.GBC),
 		screenOut: screen,
 		phaseIdx:  0,
 		bgPal:     new(gbPalette),
@@ -63,11 +60,11 @@ func New(mmu mmu.MMU, hw consts.HardwareCompat, screen chan<- *ScreenImage, exit
 	mmu.AddIODevice(ppu, consts.AddrLCDC, consts.AddrSTAT, consts.AddrSCROLLY, consts.AddrSCROLLX,
 		consts.AddrLY, consts.AddrLYC, consts.AddrBGP, consts.AddrOBJECTPALETTE0, consts.AddrOBJECTPALETTE1,
 		consts.AddrWY, consts.AddrWX)
-	if ppu.gbc {
+	if mmu.HardwareCompat() == consts.GBC {
 		ppu.vram1 = newVRAM()
-		ppu.dma = new(vramDMA)
-		ppu.bgcPal = newGBCPalette(consts.AddrBGPI)
-		ppu.obcPal = newGBCPalette(consts.AddrOBPI)
+		ppu.dma = newVramDMA(mmu)
+		ppu.bgcPal = newGBCPalette(ppu, consts.AddrBGPI)
+		ppu.obcPal = newGBCPalette(ppu, consts.AddrOBPI)
 		mmu.AddIODevice(ppu.dma, consts.AddrHDMA1, consts.AddrHDMA2, consts.AddrHDMA3, consts.AddrHDMA4, consts.AddrHDMA5)
 		mmu.AddIODevice(ppu.bgcPal, consts.AddrBGPI, consts.AddrBGPD)
 		mmu.AddIODevice(ppu.obcPal, consts.AddrOBPI, consts.AddrOBPD)
@@ -81,7 +78,7 @@ func (p *PPU) Init(noBoot bool) {
 		p.Write(consts.AddrLCDC, 0x91)
 		p.Write(consts.AddrBGP, 0xFC)
 
-		if p.gbc {
+		if p.mmu.HardwareCompat() == consts.GBC {
 			p.obcPal.Write(consts.AddrOBPI, 0x80)
 			p.obcPal.Write(consts.AddrOBPD, 0xFF)
 			p.obcPal.Write(consts.AddrOBPD, 0x7F)
@@ -190,14 +187,10 @@ func (p *PPU) state() ppuState {
 	return p.phases[p.phaseIdx].state()
 }
 
-func (p *PPU) dmgMode() bool {
-	return p.lcdMode == 4 || !p.gbc
-}
-
 func (p *PPU) Read(addr uint16) byte {
 	switch addr {
 	case consts.AddrVBK:
-		if p.vramHi || p.dmgMode() {
+		if p.vramHi || (p.mmu.HardwareCompat() == consts.DMG) {
 			return 0xFF
 		}
 		return 0xFE
@@ -232,7 +225,7 @@ func (p *PPU) Read(addr uint16) byte {
 	default:
 		if addr >= 0x8000 && addr <= 0x9FFF {
 			if p.state().canAccessVRAM() {
-				if p.vramHi && !p.dmgMode() {
+				if p.vramHi && p.mmu.EmuMode() == consts.GBC {
 					return p.vram1.Read(addr)
 				}
 				return p.vram0.Read(addr)
@@ -252,13 +245,10 @@ func (p *PPU) Read(addr uint16) byte {
 func (p *PPU) Write(addr uint16, val byte) {
 	switch addr {
 	case consts.AddrVBK:
-		if !p.dmgMode() {
+		if p.mmu.EmuMode() == consts.GBC {
 			p.vramHi = val&1 != 0
 		}
-	case consts.AddrLCDMODE:
-		if p.mmu.Read(consts.AddrBootmodeFlag) == 0x00 {
-			p.lcdMode = val
-		}
+
 	case consts.AddrLCDC:
 		oldEnabled := p.lcdEnabled()
 		p.lcdc = val
@@ -296,7 +286,7 @@ func (p *PPU) Write(addr uint16, val byte) {
 	default:
 		if addr >= 0x8000 && addr <= 0x9FFF {
 			if p.state().canAccessVRAM() {
-				if !p.dmgMode() && p.vramHi {
+				if p.mmu.EmuMode() == consts.GBC && p.vramHi {
 					p.vram1.Write(addr, val)
 					return
 				}
@@ -311,11 +301,11 @@ func (p *PPU) Write(addr uint16, val byte) {
 }
 
 func (p *PPU) useWndAndBg() bool {
-	return !p.dmgMode() || p.lcdc&0x01 != 0
+	return p.mmu.EmuMode() == consts.GBC || p.lcdc&0x01 != 0
 }
 
 func (p *PPU) masterPriority() bool {
-	return !p.dmgMode() && p.lcdc&0x01 != 0
+	return p.mmu.EmuMode() == consts.GBC && p.lcdc&0x01 != 0
 }
 
 func (p *PPU) useObjects() bool {
@@ -375,7 +365,7 @@ func (p *PPU) Step() {
 }
 
 func (p *PPU) requstLcdcInterrupt(i lcdInterrupts) {
-	if (p.ie & i) == i {
+	if (p.ie & i) != 0 {
 		p.mmu.RequestInterrupt(mmu.IRQLCDStat)
 	}
 }

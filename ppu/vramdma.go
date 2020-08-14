@@ -1,8 +1,12 @@
 package ppu
 
-import "github.com/boombuler/goboy2/consts"
+import (
+	"github.com/boombuler/goboy2/consts"
+	"github.com/boombuler/goboy2/mmu"
+)
 
 type vramDMA struct {
+	mmu    mmu.MMU
 	hdma12 uint16
 	hdma34 uint16
 
@@ -15,6 +19,12 @@ type vramDMA struct {
 	ppuState      ppuState
 	hblankHandled bool
 	timer         int
+}
+
+func newVramDMA(mmu mmu.MMU) *vramDMA {
+	return &vramDMA{
+		mmu: mmu,
+	}
 }
 
 func (dma *vramDMA) Step(p *PPU) {
@@ -58,37 +68,41 @@ func (dma *vramDMA) active(p *PPU) bool {
 }
 
 func (dma *vramDMA) Read(addr uint16) byte {
-	switch addr {
-	case consts.AddrHDMA1:
-		return byte(dma.hdma12 >> 8)
-	case consts.AddrHDMA2:
-		return byte(dma.hdma12)
-	case consts.AddrHDMA3:
-		return byte(dma.hdma34 >> 8)
-	case consts.AddrHDMA4:
-		return byte(dma.hdma34)
-	case consts.AddrHDMA5:
-		r := byte(0x00)
-		if dma.running {
-			r = 1 << 7
+	if dma.mmu.EmuMode() == consts.GBC {
+		switch addr {
+		case consts.AddrHDMA1:
+			return byte(dma.hdma12 >> 8)
+		case consts.AddrHDMA2:
+			return byte(dma.hdma12)
+		case consts.AddrHDMA3:
+			return byte(dma.hdma34 >> 8)
+		case consts.AddrHDMA4:
+			return byte(dma.hdma34)
+		case consts.AddrHDMA5:
+			r := byte(0x00)
+			if dma.running {
+				r = 1 << 7
+			}
+			return r | dma.length
 		}
-		return r | dma.length
 	}
 	return 0xFF
 }
 
 func (dma *vramDMA) Write(addr uint16, val byte) {
-	switch addr {
-	case consts.AddrHDMA1:
-		dma.hdma12 = dma.hdma12&0x00FF | (uint16(val) << 8)
-	case consts.AddrHDMA2:
-		dma.hdma12 = dma.hdma12&0xFF00 | uint16(val)
-	case consts.AddrHDMA3:
-		dma.hdma34 = dma.hdma34&0x00FF | (uint16(val) << 8)
-	case consts.AddrHDMA4:
-		dma.hdma34 = dma.hdma34&0xFF00 | uint16(val)
-	case consts.AddrHDMA5:
-		dma.startTransfer(val)
+	if dma.mmu.EmuMode() == consts.GBC {
+		switch addr {
+		case consts.AddrHDMA1:
+			dma.hdma12 = dma.hdma12&0x00FF | (uint16(val) << 8)
+		case consts.AddrHDMA2:
+			dma.hdma12 = dma.hdma12&0xFF00 | uint16(val)
+		case consts.AddrHDMA3:
+			dma.hdma34 = dma.hdma34&0x00FF | (uint16(val) << 8)
+		case consts.AddrHDMA4:
+			dma.hdma34 = dma.hdma34&0xFF00 | uint16(val)
+		case consts.AddrHDMA5:
+			dma.startTransfer(val)
+		}
 	}
 }
 

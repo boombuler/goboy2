@@ -88,7 +88,7 @@ func New(mmu mmu.MMU) *APU {
 		ch3,
 		ch4,
 	}
-	mmu.AddIODevice(apu, addrNR50, addrNR51, addrNR52)
+	mmu.AddIODevice(apu, addrNR50, addrNR51, addrNR52, consts.AddrPCM12, consts.AddrPCM34)
 	mmu.AddIODevice(ch1, addrNR10, addrNR11, addrNR12, addrNR13, addrNR14)
 	mmu.AddIODevice(ch2, addrNR21, addrNR22, addrNR23, addrNR24)
 	mmu.AddIODevice(ch3, addrNR30, addrNR31, addrNR32, addrNR33, addrNR34)
@@ -145,6 +145,14 @@ func (apu *APU) Read(addr uint16) byte {
 			}
 		}
 		return result
+	case consts.AddrPCM12:
+		lo := byte(apu.generators[0].CurrentSample() * 128)
+		hi := byte(apu.generators[1].CurrentSample()*128) << 4
+		return lo | hi
+	case consts.AddrPCM34:
+		lo := byte(apu.generators[2].CurrentSample() * 128)
+		hi := byte(apu.generators[3].CurrentSample()*128) << 4
+		return lo | hi
 	default:
 		return 0
 	}

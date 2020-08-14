@@ -3,6 +3,8 @@ package ppu
 import (
 	"fmt"
 	"sync"
+
+	"github.com/boombuler/goboy2/consts"
 )
 
 var emptyScreen = newScreen()
@@ -50,14 +52,16 @@ type palette interface {
 type gbPalette uint16
 
 type gbcPalette struct {
+	ppu      *PPU
 	IndexAdr uint16
 	idx      int
 	autoInc  bool
 	data     [32]RGB
 }
 
-func newGBCPalette(idxAddr uint16) *gbcPalette {
+func newGBCPalette(ppu *PPU, idxAddr uint16) *gbcPalette {
 	r := new(gbcPalette)
+	r.ppu = ppu
 	r.IndexAdr = idxAddr
 	for i := 0; i < 32; i++ {
 		r.data[i].R = 0xF8
@@ -110,7 +114,9 @@ func (p *gbcPalette) Read(addr uint16) byte {
 		}
 		return byte(p.idx) | inc | 0x40
 	}
-
+	if p.ppu.mmu.EmuMode() == consts.DMG {
+		return 0xFF
+	}
 	hi := p.idx&1 != 0
 	cHi, cLo := getColorBytes(p.data[p.idx>>1])
 	if hi {
@@ -120,6 +126,10 @@ func (p *gbcPalette) Read(addr uint16) byte {
 }
 
 func (p *gbcPalette) Write(addr uint16, val byte) {
+	if p.ppu.mmu.EmuMode() == consts.DMG {
+		return
+	}
+
 	if addr == p.IndexAdr {
 		p.idx = int(val & 0x3f)
 		p.autoInc = (val & (1 << 7)) != 0

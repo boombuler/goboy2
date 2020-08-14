@@ -1,9 +1,10 @@
 package input
 
 import (
+	"sync"
+
 	"github.com/boombuler/goboy2/consts"
 	"github.com/boombuler/goboy2/mmu"
-	"sync"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -54,17 +55,22 @@ const (
 )
 
 func (kb *Keyboard) Read(addr uint16) byte {
+	var fixedMask byte = 0xC0
+	if kb.mmu.HardwareCompat() == consts.GBC {
+		fixedMask = 0xF0
+	}
+
 	if addr == consts.AddrInput {
 		kb.lock.Lock()
 		defer kb.lock.Unlock()
 
 		switch kb.colSelect {
 		case col1:
-			return kb.keyState[1] | 0xC0
+			return kb.keyState[1] | fixedMask
 		case col2:
-			return kb.keyState[0] | 0xC0
+			return kb.keyState[0] | fixedMask
 		default:
-			return kb.keyState[0] | kb.keyState[1] | 0xC0
+			return kb.keyState[0] | kb.keyState[1] | fixedMask
 		}
 	}
 	return 0x00

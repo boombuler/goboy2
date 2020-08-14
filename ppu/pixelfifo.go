@@ -1,5 +1,9 @@
 package ppu
 
+import (
+	"github.com/boombuler/goboy2/consts"
+)
+
 // Fifo Format: BPPP _FCC (B = BG-Palette; P = Palette; F = Priority-Flag; C = Color)
 
 type pixelFiFo struct {
@@ -65,7 +69,7 @@ func (ppu *PPU) usePixel(curPix, newPix byte, curOAMIdx, newOAMIdx int) bool {
 		return false
 	}
 
-	if ppu.dmgMode() {
+	if ppu.mmu.EmuMode() == consts.DMG {
 		if !useBGPal(curPix) {
 			return false
 		}
@@ -91,7 +95,7 @@ func (fifo *pixelFiFo) dequeue(ppu *PPU) RGB {
 	pix := colIdx(b)
 
 	var palette palette
-	if ppu.gbc {
+	if ppu.mmu.HardwareCompat() == consts.GBC {
 		palette = ppu.obcPal
 		if useBGPal(b) {
 			palette = ppu.bgcPal

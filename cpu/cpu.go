@@ -39,7 +39,6 @@ func (cpu *CPU) GetRegisterValues() (pc, sp uint16, a, b, c, d, e, f, h, l byte)
 // CPU is the central processing unit of the gameboy which will consume and execute the program code
 type CPU struct {
 	mmu mmu.MMU
-	hw  consts.HardwareCompat
 	registers
 
 	key1         *key1Reg
@@ -59,15 +58,16 @@ type CPU struct {
 }
 
 // New returns a new cpu connected with the given mmu
-func New(mmu mmu.MMU, hw consts.HardwareCompat) *CPU {
+func New(mmu mmu.MMU) *CPU {
 	cpu := &CPU{
-		hw:          hw,
 		mmu:         mmu,
 		opCodeState: newState(),
 		rootOC:      nextOpCode(),
 	}
-	if hw == consts.GBC {
-		cpu.key1 = new(key1Reg)
+	if mmu.HardwareCompat() == consts.GBC {
+		cpu.key1 = &key1Reg{
+			mmu: mmu,
+		}
 		mmu.AddIODevice(cpu.key1, consts.AddrKEY1)
 	}
 	return cpu
@@ -75,7 +75,7 @@ func New(mmu mmu.MMU, hw consts.HardwareCompat) *CPU {
 
 func (c *CPU) Init(noBoot bool) {
 	if noBoot {
-		if c.hw == consts.GBC {
+		if c.mmu.HardwareCompat() == consts.GBC {
 			c.SetRegisterValues(0x0100, 0xFFFE, 0x11, 0x00, 0x00, 0x00, 0x08, 0x80, 0x00, 0x7C)
 		} else {
 			c.SetRegisterValues(0x0100, 0xFFFE, 0x01, 0x00, 0x13, 0x00, 0xD8, 0xB0, 0x01, 0x4D)

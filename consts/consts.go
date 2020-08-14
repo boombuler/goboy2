@@ -54,6 +54,9 @@ const (
 	AddrOBPI uint16 = 0xFF6A
 	AddrOBPD uint16 = 0xFF6B
 
+	AddrPCM12 uint16 = 0xFF76
+	AddrPCM34 uint16 = 0xFF77
+
 	// AddrKEY1 is the GBC Speed-Mode Register
 	AddrKEY1 uint16 = 0xFF4D
 	// AddrRP is the GBC  Infrared Communications Port
