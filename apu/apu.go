@@ -88,7 +88,10 @@ func New(mmu mmu.MMU) *APU {
 		ch3,
 		ch4,
 	}
-	mmu.AddIODevice(apu, addrNR50, addrNR51, addrNR52, consts.AddrPCM12, consts.AddrPCM34)
+	mmu.AddIODevice(apu, addrNR50, addrNR51, addrNR52)
+	if mmu.HardwareCompat() == consts.GBC {
+		mmu.AddIODevice(apu, consts.AddrPCM12, consts.AddrPCM34)
+	}
 	mmu.AddIODevice(ch1, addrNR10, addrNR11, addrNR12, addrNR13, addrNR14)
 	mmu.AddIODevice(ch2, addrNR21, addrNR22, addrNR23, addrNR24)
 	mmu.AddIODevice(ch3, addrNR30, addrNR31, addrNR32, addrNR33, addrNR34)

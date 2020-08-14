@@ -145,9 +145,9 @@ With the [tests from the 18. Apr. 2020](https://github.com/Gekkio/mooneye-gb/com
 
 | Test                                                 | Result |
 | ---------------------------------------------------- | ------ |
-| `acceptance -> bits -> unused_hwio-GS`               | ❌     |
+| `acceptance -> bits -> unused_hwio-GS`               | ✅     |
 | `acceptance -> boot_div-dmgABCmgb`                   | ✅     |
-| `acceptance -> boot_hwio-dmgABCmgb`                  | ❌     |
+| `acceptance -> boot_hwio-dmgABCmgb`                  | ✅     |
 | `acceptance -> boot_regs-dmgABC`                     | ✅     |
 | `acceptance -> di_timing-GS`                         | ❌     |
 | `acceptance -> halt_ime1_timing2-GS`                 | ❌     |
