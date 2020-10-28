@@ -44,7 +44,7 @@ The default key-map is as follows:
 | `cpu_instrs`     | ✅ |
 | `dmg_sound`      | ❌ |
 | `instr_timing`   | ✅ |
-| `interrupt_time` | ❌ |
+| `interrupt_time` | ✅ |
 | `mem_timing`     | ✅ |
 | `mem_timing-2`   | ✅ |
 | `oam_bug`        | ❌ |
@@ -92,7 +92,7 @@ With the [tests from the 18. Apr. 2020](https://github.com/Gekkio/mooneye-gb/com
 | `acceptance -> ppu -> stat_irq_blocking`             | ❌     |
 | `acceptance -> ppu -> stat_lyc_onoff`                | ❌     |
 | `acceptance -> push_timing`                          | ✅     |
-| `acceptance -> rapid_di_ei`                          | ❌     |
+| `acceptance -> rapid_di_ei`                          | ✅     |
 | `acceptance -> ret_cc_timing`                        | ✅     |
 | `acceptance -> ret_timing`                           | ✅     |
 | `acceptance -> reti_intr_timing`                     | ✅     |

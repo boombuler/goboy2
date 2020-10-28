@@ -152,7 +152,7 @@ func (cpu *CPU) Step() {
 		cpu.setOPCode(cpu.rootOC)
 
 		if scheduled {
-			cpu.ime = true
+			cpu.ime = cpu.imeScheduled
 			cpu.imeScheduled = false
 		}
 
